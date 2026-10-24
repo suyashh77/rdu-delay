@@ -48,3 +48,21 @@ def test_honest_baselines_pass_future_scramble():
 
 def test_canary_is_detected():
     assert leakage.check_canary(synthetic_data(), CFG, DAYS[:1])["passed"]
+
+
+def test_lgbm_on_history_store_passes_future_scramble():
+    from rdu.eval.walkforward import eval_days, predict_days
+    from rdu.features.history import KEEP
+    from rdu.models.flight_level import LGBMBuckets
+
+    data = synthetic_data(days=40)
+    store_cfg = Config(model="x", start="2023-01-02", end="2023-02-09", retrain_days=3)
+    parts = []
+    for n in ["B2", "B3", "B4"]:
+        p = predict_days(lambda d, n=n: MODELS[n](), data, store_cfg, eval_days(store_cfg))
+        parts.append(p.set_index("flight_id")[KEEP].add_prefix(f"{n}_"))
+    store = pd.concat(parts, axis=1)
+    cfg = Config(model="x", start="2023-01-25", end="2023-02-09", retrain_days=3)
+    make = lambda d: LGBMBuckets(store, params={"min_data_in_leaf": 5}, rounds=20)  # noqa: E731
+    r = leakage.check_future_scramble(make, data, cfg, [date(2023, 1, 25), date(2023, 2, 5)])
+    assert r["passed"]

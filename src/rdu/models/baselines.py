@@ -97,6 +97,24 @@ def _counts(a: np.ndarray, b: np.ndarray, shape: tuple) -> np.ndarray:
     return c
 
 
+def bucket_shapes(flights: pd.DataFrame) -> dict[str, np.ndarray]:
+    """Per direction, (5, GRID): historical spread of minutes within each bucket."""
+    f = flights[flights["bucket"] >= 0]
+    y = target_bin(f["y_capped"], f["bucket"])
+    # One pseudo-observation spread uniformly over each bucket's minutes, so a bucket
+    # not yet seen in history still has a valid shape. Negligible once data exists.
+    prior = np.zeros((5, GRID))
+    for b, (lo, hi) in enumerate([(0, 15), (15, 45), (45, 90), (90, CANCEL)]):
+        prior[b, lo:hi] = 1.0 / (hi - lo)
+    shape = {}
+    for d in ["dep", "arr"]:
+        m = (f["direction"] == d).to_numpy()
+        s = _counts([f["bucket"].to_numpy()[m]], y[m], (5, GRID)) + prior
+        shape[d] = s / np.maximum(s.sum(1, keepdims=True), 1e-12)
+        shape[d][4] = np.eye(GRID)[CANCEL]  # cancelled is a single point by definition
+    return shape
+
+
 class B4Markov:
     """Discrete Markov chain over 5 buckets, propagated down each aircraft's scheduled day.
 
@@ -130,15 +148,7 @@ class B4Markov:
         fine = _counts([pa, sg, hb[later]], dep[later], (5, 5, 6, 5))
         self.t_dep = (fine + K_POOL * parent[:, None, None, :]) / (fine.sum(-1, keepdims=True) + K_POOL)
 
-        f = hist.flights[hist.flights["bucket"] >= 0]
-        y = target_bin(f["y_capped"], f["bucket"])
-        self.shape = {}
-        for d in ["dep", "arr"]:
-            m = (f["direction"] == d).to_numpy()
-            s = _counts([f["bucket"].to_numpy()[m]], y[m], (5, GRID))
-            self.shape[d] = s / np.maximum(s.sum(1, keepdims=True), 1)
-        for d in self.shape:  # a bucket never seen still needs a shape
-            self.shape[d][4] = np.eye(GRID)[CANCEL]
+        self.shape = bucket_shapes(hist.flights)
 
     @staticmethod
     def _norm(c: np.ndarray) -> np.ndarray:

@@ -10,10 +10,21 @@ from rdu.eval import leakage
 from rdu.eval.walkforward import ROOT, Config, compare, load_data, run
 from rdu.models.baselines import MODELS
 
+LEARNED = ["LGBM"]
+
+
+def factory(name: str):
+    if name == "LGBM":
+        from rdu.features import history
+        from rdu.models.flight_level import LGBMBuckets
+        store = history.load()
+        return lambda d: LGBMBuckets(store)
+    return lambda d: MODELS[name]()
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("model", choices=sorted(MODELS))
+    ap.add_argument("model", choices=sorted(MODELS) + LEARNED)
     ap.add_argument("run_id")
     ap.add_argument("--fast", action="store_true", help="every 7th day (screening)")
     ap.add_argument("--vs", help="champion run_id to compare against")
@@ -22,7 +33,7 @@ def main() -> int:
 
     data = load_data()
     cfg = Config(model=a.model, stride=7 if a.fast else 1)
-    make = lambda d: MODELS[a.model]()  # noqa: E731
+    make = factory(a.model)
     summary = run(make, cfg, data, a.run_id)
     out = ROOT / "experiments" / "results" / a.run_id
     if not a.skip_leakage:

@@ -299,3 +299,75 @@ Technical:
 B1 always on time; B2 flight-number bucket frequencies (same month, point-in-time); B3 day-of-week × hour × month profile; B4 Markov transitions from inbound-delay bucket to departure bucket by turn slack and hour block. In NASA's Run-way Functions challenge, persistence was a strong baseline; accuracy is not used as a metric because of the high on-time base rate.
 
 Linked: HANDOFF §2.7
+
+---
+
+## DL-016 — Loading BTS and rebuilding each aircraft's day
+Date: 2026-10-24
+Status: Tested — kept (verification, not a model experiment)
+Question: Can we turn raw BTS records into clean flights with correct times and correct "leg number of the day"?
+Options considered: convert local arrival clock times directly (needs midnight and timezone fixes); derive arrival from scheduled departure + scheduled elapsed time.
+How we decided: Unit tests (red-eye across midnight and timezones, leg ordering, outcome buckets) and a hand check of 20 random aircraft-days.
+Decision: Scheduled departure is converted from the origin's local time to UTC. Scheduled arrival = scheduled departure + scheduled elapsed time. Actual times = scheduled + reported delay. Leg number = order of scheduled departures for one tail number on one BTS flight date. Diverted flights with no arrival time count as "90+ minutes" in the buckets and as 180 minutes for CRPS, like cancellations.
+
+Simple:
+Government flight records use each airport's local clock, which makes overnight and cross-country flights easy to get wrong. We avoid that by starting from the departure time and adding the planned flight length. Then we line up every plane's flights for the day in order, so we know whether your flight is the plane's first trip of the day or its fifth. We checked 20 random plane-days by hand; all lined up correctly.
+
+Technical:
+2022-01 to 2026-08: 56 monthly files, 1,483,703 legs (every leg of every tail that touched RDU that day), 533,241 RDU rows (266,622 departures, 266,619 arrivals). Outcome mix: on time 77.1%, 15–44 min 10.6%, 45–89 min 5.4%, 90+ 4.9%, cancelled 2.0%; 1,046 diverted. 2,072 legs have no tail number (kept; treated as leg 1 with unknown inbound). Mean 5.2 legs per aircraft-day (max 15). Chain breaks (previous leg ends somewhere other than where this leg starts) on 2.1% of legs, 0.8% excluding legs next to a cancellation; scheduled overlaps on 2.3%. These reflect tail swaps that BTS records imperfectly: in one hand-checked case leg 1 left 8.5 h late yet leg 2 "left" on time, which is impossible for one airframe. So BTS tail rotations are noisy, and propagation features will carry that noise. Data quirks handled: one leg with no flight number (F9 MIA–ATL, 2024-08-25; kept, upstream only); airport code DJT (Palm Beach, from 2026-08) missing from the timezone table, mapped to America/New_York. DST: ambiguous fall-back hour treated as standard time. Outcome availability time = actual gate-in; cancelled = scheduled departure; diverted with no arrival = scheduled arrival + 6 h. Disclosure: while summarizing the data we printed yearly delay and cancellation base rates that include holdout months (no model scores). 2026 cancellation rate is 3.0% vs 1.5–1.6% in 2023–2025.
+
+Linked: HANDOFF §2.1–§2.2, §6 step 1; F1
+
+---
+
+## DL-017 — Interval coverage for an outcome with a big spike at zero
+Date: 2026-10-24
+Status: Decided by reasoning — **changes a foundation metric; needs Yash's sign-off**
+Question: How do we check that our 80% ranges really contain the outcome 80% of the time?
+Options considered: (a) as written: share of flights whose capped delay falls between the 10th and 90th percentile; (b) randomized PIT coverage: where the outcome falls on the forecast's own probability scale, with partial credit for ties.
+How we decided: Reasoning plus a unit test. About 77% of flights have a capped delay of exactly 0 (early or on time). So the 10th percentile is 0 for nearly every forecast, and any honest forecast covers at least 90% under (a). The 75–85% guardrail could never pass, even for a perfect model. With (b), a perfectly calibrated forecast scores exactly 80% (test: 80.0% vs 89%+ for (a)).
+Decision: The guardrail uses (b). The naive version (a) is still reported as coverage80_naive.
+
+Simple:
+Most flights are "zero minutes late." That pile at zero breaks the usual way of checking a forecast range: even a perfect forecast would look too wide. We switched to a standard fix for lumpy outcomes. It asks where the real outcome landed inside the forecast's own odds, and gives partial credit when it lands on the pile. A perfect forecast scores exactly 80% this way.
+
+Technical:
+For outcome y with forecast CDF F, the randomized PIT is U ~ Uniform[F(y−), F(y)]. Coverage credit = |[F(y−), F(y)] ∩ [0.1, 0.9]| / (F(y) − F(y−)), or the indicator F(y) ∈ [0.1, 0.9] when the step has zero width. Under calibration, U ~ Uniform(0, 1), so expected coverage is exactly 0.80. This is the discrete-outcome analogue of central-interval coverage (Czado, Gneiting & Held 2009).
+
+Linked: HANDOFF §2.6, M15
+
+---
+
+## DL-018 — Shuffled-label leakage test: compare against climatology, not "always on time"
+Date: 2026-10-24
+Status: Decided by reasoning — **changes a foundation test; needs Yash's sign-off**
+Question: When we train on scrambled outcomes, what score should count as "suspiciously good"?
+Options considered: (a) as written: no better than B1 (every flight on time); (b) no better than B0 climatology (each flight gets the overall historical delay distribution).
+How we decided: Reasoning. Any model that just learns the overall delay rate beats B1 on Brier score (about 0.16 vs 0.20). A shuffled-label model still learns that rate, so test (a) passes no matter what and catches nothing. With scrambled labels, the best honest result is climatology. Beating climatology means some real link between inputs and outcomes survived the scramble, i.e. a leak.
+Decision: (b), with a tolerance of 0.001 Brier.
+
+Simple:
+One safety check scrambles the answers before training. A model trained on scrambled answers should only learn "about 1 in 5 flights is late," nothing more. The written rule compared it to "every flight is on time," which it always beats, so that check could never catch anything. We now compare it to the plain 1-in-5 forecast instead.
+
+Technical:
+Brier(B1) = base rate ≈ 0.20; Brier(climatology) = p(1−p) ≈ 0.16. Shuffled runs permute outcome columns jointly across all history rows at every fit. Run on stride-28 days of the evaluation window. Smoke test (2022-03/04): shuffled B4 0.1226 vs climatology 0.1223, pass.
+
+Linked: HANDOFF §2.8
+
+---
+
+## DL-019 — Walk-forward harness, metrics and leakage tests
+Date: 2026-10-24
+Status: Tested — kept (verification)
+Question: Is the test bench itself trustworthy?
+Options considered: n/a (foundation, HANDOFF §2.5–§2.8)
+How we decided: Unit tests on hand-computed cases plus a deliberate cheat.
+Decision: Built as specified, with the changes in DL-017 and DL-018. Every forecast is a probability spread over 0–180 capped minutes plus a cancellation probability. Buckets, the delay probability, the capped mean, the typical delay if delayed and the quantiles are all read from that one distribution.
+
+Simple:
+Before testing any model, we tested the test. The scoring math was checked against answers worked out by hand. Then we built a model that cheats by peeking at tomorrow's real delays, and confirmed our checks catch it every time. Honest models pass the same check: scrambling all future data does not change their forecasts at all.
+
+Technical:
+For each day D: cutoff = 23:00 ET on D−1. History = legs whose outcome time < cutoff. Targets and tomorrow's schedule are passed with all outcome columns removed. Refit every 7 days. Leakage suite on every run: (1) future-scramble — outcome columns of every leg not known by D's cutoff are permuted, the model is refit and must give identical forecasts on 4 sample days (honest baselines: max change 0.0); (2) canary — a model that puts 50% of its mass on the true outcome must fail test (1) (it does: max change 180); (3) shuffled labels (DL-018); (4) weather issue time — not applicable yet. CRPS is computed exactly on the 1-minute grid with cancellations at 180; checked: point mass gives |k − y|, uniform 0–9 gives 2.85. Block bootstrap: paired, 7-day blocks, 2,000 resamples over days. Slices: hour block, leg group, carrier, mainline vs regional, month, direction. Not yet available: the calm-vs-storm slice (needs SPC/NWS data). Open issue: fast mode as written (every 7th day) always lands on the same weekday; every 8th day would cycle through weekdays. Left at 7 pending Yash.
+
+Linked: HANDOFF §2.5–§2.8, DL-017, DL-018
