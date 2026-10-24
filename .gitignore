@@ -1,0 +1,7 @@
+.venv/
+data/
+experiments/results/
+__pycache__/
+*.pyc
+.env
+*.log

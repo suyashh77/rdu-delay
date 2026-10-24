@@ -1,0 +1,10 @@
+pandas
+pyarrow
+numpy
+lightgbm
+scikit-learn
+pyyaml
+airportsdata
+
+[dev]
+pytest

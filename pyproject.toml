@@ -1,0 +1,14 @@
+[project]
+name = "rdu"
+version = "0.0.1"
+requires-python = ">=3.11"
+dependencies = ["pandas", "pyarrow", "numpy", "lightgbm", "scikit-learn", "pyyaml", "airportsdata"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

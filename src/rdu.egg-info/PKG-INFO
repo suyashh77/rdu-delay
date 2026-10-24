@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: rdu
+Version: 0.0.1
+Requires-Python: >=3.11
+Requires-Dist: pandas
+Requires-Dist: pyarrow
+Requires-Dist: numpy
+Requires-Dist: lightgbm
+Requires-Dist: scikit-learn
+Requires-Dist: pyyaml
+Requires-Dist: airportsdata
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
