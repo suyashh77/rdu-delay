@@ -11,7 +11,8 @@ from rdu.models.baselines import History, bucket_shapes
 
 CATEGORICAL = ["direction", "carrier", "other_airport", "prev_origin"]
 NUMERIC = ["rdu_local_hour", "dow", "month", "leg_number", "n_legs_day", "sched_turn_min",
-           "crs_elapsed_min", "distance", "crs_dep_hhmm", "chain_break", "no_tail"]
+           "crs_elapsed_min", "distance", "crs_dep_hhmm"]
+# Never features: chain_break and tail-missing are written after the fact in BTS (DL-021).
 PARAMS = {"objective": "multiclass", "num_class": 5, "learning_rate": 0.05, "num_leaves": 63,
           "min_data_in_leaf": 200, "feature_fraction": 0.8, "bagging_fraction": 0.8, "bagging_freq": 1,
           "lambda_l2": 1.0, "seed": 0, "deterministic": True, "force_row_wise": True, "verbose": -1}
@@ -38,8 +39,6 @@ class LGBMBuckets:
             "crs_elapsed_min": rows["crs_elapsed_min"],
             "distance": rows["distance"],
             "crs_dep_hhmm": rows["crs_dep_hhmm"],
-            "chain_break": rows["chain_break"].astype(float),
-            "no_tail": rows["tail"].isna().astype(float),
         }, index=rows.index)
         hist_feats = self.store.reindex(rows["flight_id"])
         hist_feats.index = rows.index
@@ -51,6 +50,9 @@ class LGBMBuckets:
     def fit(self, hist: History) -> None:
         f = hist.flights[hist.flights["bucket"] >= 0]
         f = f[f["flight_id"].isin(self.store.index)]
+        # BTS leaves the tail blank on most cancelled flights, so blank chain features would
+        # teach "missing = cancelled" (DL-021). Train on known tails; still predict all rows.
+        f = f[f["tail"].notna()]
         self.cats = {c: sorted(pd.Series(self._raw_cat(f, c)).dropna().unique()) for c in CATEGORICAL}
         X = self._frame(f)
         self.booster = lgb.train(self.params, lgb.Dataset(X, f["bucket"].to_numpy()), self.rounds)

@@ -132,7 +132,9 @@ class B4Markov:
         ok = (dep >= 0) & (arr >= 0)
         legs, dep, arr = legs[ok], dep[ok], arr[ok]
         hb = _hour_block(legs["crs_dep_hhmm"])
-        first = (legs["leg_number"].to_numpy() == 1) | legs["chain_break"].to_numpy()
+        # Chain breaks are not used: BTS tails are the planes that actually flew, so a break
+        # mostly marks a same-day swap after trouble (DL-021) and is unknown the night before.
+        first = legs["leg_number"].to_numpy() == 1
 
         self.leg1 = self._norm(_counts([hb[first]], dep[first], (6, 5)) + 1)
         self.t_arr = self._norm(_counts([dep], arr, (5, 5)) + 1)
@@ -162,7 +164,7 @@ class B4Markov:
         hb = _hour_block(s["crs_dep_hhmm"])
         sg = _slack_group(s["sched_turn_min"])
         leg = s["leg_number"].fillna(1).to_numpy()
-        first = (leg == 1) | s["chain_break"].to_numpy() | s["tail"].isna().to_numpy()
+        first = (leg == 1) | s["tail"].isna().to_numpy()
         pos = np.arange(len(s))
         for k in range(1, int(leg.max()) + 1):
             m = leg == k
