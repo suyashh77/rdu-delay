@@ -177,7 +177,8 @@ def condense_nbs(raw: pd.DataFrame, cut: pd.DataFrame) -> pd.DataFrame:
     m = m[(lead >= pd.Timedelta(hours=WINDOW_START_H - 3)) & (lead < pd.Timedelta(hours=WINDOW_END_H))]
     out = m[["forecast_date", "valid_utc", "runtime"]].rename(columns={"runtime": "issue_utc"})
     for col in NBS_KEEP:
-        out[col] = pd.to_numeric(m[col], errors="coerce").round().astype("Int16")
+        vals = m[col] if col in m else pd.Series(pd.NA, index=m.index)  # SJU has no pra
+        out[col] = pd.to_numeric(vals, errors="coerce").round().astype("Int16")
     return out.reset_index(drop=True)
 
 
