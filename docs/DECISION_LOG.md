@@ -371,3 +371,31 @@ Technical:
 For each day D: cutoff = 23:00 ET on D−1. History = legs whose outcome time < cutoff. Targets and tomorrow's schedule are passed with all outcome columns removed. Refit every 7 days. Leakage suite on every run: (1) future-scramble — outcome columns of every leg not known by D's cutoff are permuted, the model is refit and must give identical forecasts on 4 sample days (honest baselines: max change 0.0); (2) canary — a model that puts 50% of its mass on the true outcome must fail test (1) (it does: max change 180); (3) shuffled labels (DL-018); (4) weather issue time — not applicable yet. CRPS is computed exactly on the 1-minute grid with cancellations at 180; checked: point mass gives |k − y|, uniform 0–9 gives 2.85. Block bootstrap: paired, 7-day blocks, 2,000 resamples over days. Slices: hour block, leg group, carrier, mainline vs regional, month, direction. Not yet available: the calm-vs-storm slice (needs SPC/NWS data). Fast mode changed from every 7th day to every 8th day, because a 7-day stride always lands on the same weekday (approved by Yash 2026-10-24). EXP-001's screen was launched before this change and used every 7th day.
 
 Linked: HANDOFF §2.5–§2.8, DL-017, DL-018
+
+---
+
+## DL-020 — First champion: the Markov chain baseline (B4)
+Date: 2026-10-24
+Status: Tested — kept (champion-000)
+Question: Which simple baseline is the bar every later model must beat?
+Options considered: B1 every flight on time; B2 flight-number history (same month); B3 seasonal profile (day of week × hour × month); B4 Markov chain passing delay down each aircraft's scheduled day. B0 climatology run as a reference.
+How we decided: Full-mode walk-forward on every day 2023-01-01 to 2025-06-30 (295,102 flights, 911 days), weekly refits, all leakage tests passed for every baseline.
+Decision: B4 is champion-000.
+
+Simple:
+We tried four simple ways to forecast delays. The best one follows each plane through its day: if the plane is likely to arrive late from its previous flight, your flight is more likely to leave late. It beat the others clearly. But it is not best everywhere. On regional airlines and on a plane's later flights of the day, simply looking at how that flight number usually does was better. That tells us what the next model should combine.
+
+Technical:
+| Model | Brier | CRPS | Log loss | ECE | Coverage80 (PIT) | Coverage80 (naive) |
+|---|---|---|---|---|---|---|
+| B0 climatology | 0.1618 | 14.07 | 0.790 | 0.002 | 0.806 | 0.908 |
+| B1 always on time | 0.2034 | 16.51 | 3.017 | 0.203 | 0.506 | 0.632 |
+| B2 flight number | 0.1550 | 13.64 | 0.770 | 0.005 | 0.803 | — |
+| B3 seasonal | 0.1550 | 13.73 | 0.780 | 0.010 | 0.802 | — |
+| **B4 Markov** | **0.1539** | **13.46** | **0.758** | 0.016 | 0.821 | 0.932 |
+
+B4 vs B2: Brier skill +0.73%, CRPS skill +1.4%; B4 vs B3: Brier +0.72%, CRPS +2.0%. Paired 7-day block bootstrap (2,000 resamples) intervals exclude zero for Brier and CRPS in both comparisons. Base rate of 15+ minute delay: 20.3%.
+Slices (Brier, B4 vs best of B2/B3): better on leg 1 (+0.9%), leg 2 (+1.7%), arrivals (+1.3%), mainline (+2.5%), morning; worse on leg 3 (−0.5%), leg 4+ (−1.2%), evening 18–20 (−1.6%), regional carriers (−9.5%), and the 931 flights with no tail number (−28%; B4 treats them as leg 1).
+Caveats: (1) B4 has the worst calibration of the three useful baselines (ECE 0.016 vs 0.005 for B2); calibration is backlog idea M14. (2) B4 uses the real tail rotations from BTS. Live, these must come from tomorrow's schedule. An early AeroAPI check (2026-10-24, 30 flights, about 12 hours ahead) had tail numbers for 28 of 30; F1 measures this properly. (3) B4 transitions ignore carrier, which likely explains the regional gap. (4) B4's full run used code from commit f097685; a later change (one pseudo-observation per bucket shape, commit 0b443f4) changes its forecasts by a negligible amount. Results in experiments/results/B*-full/.
+
+Linked: HANDOFF §2.7, §6 step 3; DL-015; EXP-001; F1, M14
