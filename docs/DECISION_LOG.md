@@ -322,7 +322,7 @@ Linked: HANDOFF §2.1–§2.2, §6 step 1; F1
 
 ## DL-017 — Interval coverage for an outcome with a big spike at zero
 Date: 2026-10-24
-Status: Decided by reasoning — **changes a foundation metric; needs Yash's sign-off**
+Status: Decided by reasoning — foundation change approved by Yash 2026-10-24
 Question: How do we check that our 80% ranges really contain the outcome 80% of the time?
 Options considered: (a) as written: share of flights whose capped delay falls between the 10th and 90th percentile; (b) randomized PIT coverage: where the outcome falls on the forecast's own probability scale, with partial credit for ties.
 How we decided: Reasoning plus a unit test. About 77% of flights have a capped delay of exactly 0 (early or on time). So the 10th percentile is 0 for nearly every forecast, and any honest forecast covers at least 90% under (a). The 75–85% guardrail could never pass, even for a perfect model. With (b), a perfectly calibrated forecast scores exactly 80% (test: 80.0% vs 89%+ for (a)).
@@ -340,7 +340,7 @@ Linked: HANDOFF §2.6, M15
 
 ## DL-018 — Shuffled-label leakage test: compare against climatology, not "always on time"
 Date: 2026-10-24
-Status: Decided by reasoning — **changes a foundation test; needs Yash's sign-off**
+Status: Decided by reasoning — foundation change approved by Yash 2026-10-24
 Question: When we train on scrambled outcomes, what score should count as "suspiciously good"?
 Options considered: (a) as written: no better than B1 (every flight on time); (b) no better than B0 climatology (each flight gets the overall historical delay distribution).
 How we decided: Reasoning. Any model that just learns the overall delay rate beats B1 on Brier score (about 0.16 vs 0.20). A shuffled-label model still learns that rate, so test (a) passes no matter what and catches nothing. With scrambled labels, the best honest result is climatology. Beating climatology means some real link between inputs and outcomes survived the scramble, i.e. a leak.
@@ -368,6 +368,6 @@ Simple:
 Before testing any model, we tested the test. The scoring math was checked against answers worked out by hand. Then we built a model that cheats by peeking at tomorrow's real delays, and confirmed our checks catch it every time. Honest models pass the same check: scrambling all future data does not change their forecasts at all.
 
 Technical:
-For each day D: cutoff = 23:00 ET on D−1. History = legs whose outcome time < cutoff. Targets and tomorrow's schedule are passed with all outcome columns removed. Refit every 7 days. Leakage suite on every run: (1) future-scramble — outcome columns of every leg not known by D's cutoff are permuted, the model is refit and must give identical forecasts on 4 sample days (honest baselines: max change 0.0); (2) canary — a model that puts 50% of its mass on the true outcome must fail test (1) (it does: max change 180); (3) shuffled labels (DL-018); (4) weather issue time — not applicable yet. CRPS is computed exactly on the 1-minute grid with cancellations at 180; checked: point mass gives |k − y|, uniform 0–9 gives 2.85. Block bootstrap: paired, 7-day blocks, 2,000 resamples over days. Slices: hour block, leg group, carrier, mainline vs regional, month, direction. Not yet available: the calm-vs-storm slice (needs SPC/NWS data). Open issue: fast mode as written (every 7th day) always lands on the same weekday; every 8th day would cycle through weekdays. Left at 7 pending Yash.
+For each day D: cutoff = 23:00 ET on D−1. History = legs whose outcome time < cutoff. Targets and tomorrow's schedule are passed with all outcome columns removed. Refit every 7 days. Leakage suite on every run: (1) future-scramble — outcome columns of every leg not known by D's cutoff are permuted, the model is refit and must give identical forecasts on 4 sample days (honest baselines: max change 0.0); (2) canary — a model that puts 50% of its mass on the true outcome must fail test (1) (it does: max change 180); (3) shuffled labels (DL-018); (4) weather issue time — not applicable yet. CRPS is computed exactly on the 1-minute grid with cancellations at 180; checked: point mass gives |k − y|, uniform 0–9 gives 2.85. Block bootstrap: paired, 7-day blocks, 2,000 resamples over days. Slices: hour block, leg group, carrier, mainline vs regional, month, direction. Not yet available: the calm-vs-storm slice (needs SPC/NWS data). Fast mode changed from every 7th day to every 8th day, because a 7-day stride always lands on the same weekday (approved by Yash 2026-10-24). EXP-001's screen was launched before this change and used every 7th day.
 
 Linked: HANDOFF §2.5–§2.8, DL-017, DL-018

@@ -28,7 +28,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("model", choices=sorted(MODELS) + LEARNED)
     ap.add_argument("run_id")
-    ap.add_argument("--fast", action="store_true", help="every 7th day (screening)")
+    ap.add_argument("--fast", action="store_true", help="every 8th day (screening; cycles weekdays, DL-019)")
     ap.add_argument("--vs", help="champion run_id to compare against")
     ap.add_argument("--skip-leakage", action="store_true")
     ap.add_argument("--retrain-days", type=int, default=7)
@@ -36,7 +36,7 @@ def main() -> int:
     a = ap.parse_args()
 
     data = load_data()
-    cfg = Config(model=a.model, stride=7 if a.fast else 1, retrain_days=a.retrain_days)
+    cfg = Config(model=a.model, stride=8 if a.fast else 1, retrain_days=a.retrain_days)
     make = factory(a.model)
     out = ROOT / "experiments" / "results" / a.run_id
     if a.finalize:

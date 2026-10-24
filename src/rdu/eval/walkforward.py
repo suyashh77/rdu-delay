@@ -29,7 +29,7 @@ class Config:
     model: str
     start: str = "2023-01-01"
     end: str = "2025-06-30"  # dev period; holdout starts 2025-07-01 (HANDOFF 2.4)
-    stride: int = 1  # 1 = full mode; 7 = fast mode
+    stride: int = 1  # 1 = full mode; 8 = fast mode (cycles through weekdays)
     retrain_days: int = 7
     shuffle_labels: bool = False
     params: dict = field(default_factory=dict)
