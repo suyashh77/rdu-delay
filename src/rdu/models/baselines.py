@@ -24,7 +24,7 @@ class History:
 
 def _calendar(f: pd.DataFrame) -> pd.DataFrame:
     d = pd.to_datetime(f["forecast_date"])
-    return f.assign(month=d.dt.month, dow=d.dt.dayofweek)
+    return f.assign(month=d.dt.month, dow=d.dt.day_of_week)
 
 
 def pooled_hist(train: pd.DataFrame, y_bin: np.ndarray, target: pd.DataFrame,
