@@ -129,12 +129,19 @@ def run(make_model: Callable, cfg: Config, data: Data, run_id: str) -> dict:
     out = ROOT / "experiments" / "results" / run_id
     out.mkdir(parents=True, exist_ok=True)
     preds.to_parquet(out / "predictions.parquet")
+    return finalize(preds, cfg, data, run_id, time.time() - t0)
+
+
+def finalize(preds: pd.DataFrame, cfg: Config, data: Data, run_id: str, runtime_s: float | None) -> dict:
+    """Day scores, slices and summary from saved per-flight predictions."""
+    out = ROOT / "experiments" / "results" / run_id
     day = preds.groupby("forecast_date")[["brier", "crps", "logloss"]].mean()
     day.to_csv(out / "day_scores.csv")
     sl = slice_table(preds, slice_columns(data.flights.loc[preds.index]))
     sl.to_csv(out / "slices.csv", index=False)
     summary = {"run_id": run_id, **summarize(preds), "config": asdict(cfg), "git": git_hash(),
-               "runtime_s": round(time.time() - t0, 1), "n_days": int(preds["forecast_date"].nunique())}
+               "runtime_s": None if runtime_s is None else round(runtime_s, 1),
+               "n_days": int(preds["forecast_date"].nunique())}
     (out / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
     return summary
 
@@ -144,6 +151,10 @@ def compare(run_a: str, run_b: str) -> dict:
     base = ROOT / "experiments" / "results"
     a = pd.read_parquet(base / run_a / "predictions.parquet")
     b = pd.read_parquet(base / run_b / "predictions.parquet")
+    # A fast-mode challenger covers a subset of days: score the champion on the same flights.
+    if not a["flight_id"].isin(b["flight_id"]).all():
+        raise ValueError(f"{run_a} has flights that {run_b} never forecast")
+    b = b[b["flight_id"].isin(a["flight_id"])]
     sa, sb = summarize(a), summarize(b)
     return {
         "brier_skill": 1 - sa["brier"] / sb["brier"],

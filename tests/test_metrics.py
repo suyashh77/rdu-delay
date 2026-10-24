@@ -66,3 +66,13 @@ def test_pit_coverage_is_80_for_calibrated_lumpy_forecast():
     s = score(np.repeat(P, len(y), 0), y, np.zeros(len(y), int))
     assert abs(s["in80"].mean() - 0.80) < 0.01
     assert s["in80_naive"].mean() > 0.88  # why the naive check is unusable here
+
+
+def test_slice_columns_handles_missing_leg_number():
+    from rdu.eval.metrics import slice_columns
+    f = pd.DataFrame({"rdu_local_hour": [6, 16], "leg_number": pd.array([1, None], dtype="Int64"),
+                      "carrier": ["AA", "YX"], "forecast_date": ["2023-01-01", "2023-07-01"],
+                      "direction": ["dep", "arr"]})
+    s = slice_columns(f)
+    assert s["leg_group"].tolist() == ["1", "unknown"]
+    assert s["carrier_type"].tolist() == ["mainline", "regional"]

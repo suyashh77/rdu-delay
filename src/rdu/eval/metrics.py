@@ -110,7 +110,7 @@ def summarize(s: pd.DataFrame) -> dict:
 def slice_columns(f: pd.DataFrame) -> pd.DataFrame:
     """Slice labels for each scored flight (HANDOFF 2.6). Storm-day slice needs SPC/NWS data: not yet."""
     h = f["rdu_local_hour"]
-    leg = f["leg_number"].astype("Float64")
+    leg = f["leg_number"].astype(float).to_numpy()  # NaN when tail unknown
     return pd.DataFrame({
         "hour_block": pd.cut(h, [-1, 4, 8, 11, 14, 17, 20, 23],
                              labels=["00-04", "05-08", "09-11", "12-14", "15-17", "18-20", "21-23"]).astype(str),

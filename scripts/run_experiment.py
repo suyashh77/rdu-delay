@@ -7,7 +7,9 @@ import json
 import sys
 
 from rdu.eval import leakage
-from rdu.eval.walkforward import ROOT, Config, compare, load_data, run
+import pandas as pd
+
+from rdu.eval.walkforward import ROOT, Config, compare, finalize, load_data, run
 from rdu.models.baselines import MODELS
 
 LEARNED = ["LGBM"]
@@ -29,13 +31,18 @@ def main() -> int:
     ap.add_argument("--fast", action="store_true", help="every 7th day (screening)")
     ap.add_argument("--vs", help="champion run_id to compare against")
     ap.add_argument("--skip-leakage", action="store_true")
+    ap.add_argument("--retrain-days", type=int, default=7)
+    ap.add_argument("--finalize", action="store_true", help="reuse saved predictions.parquet")
     a = ap.parse_args()
 
     data = load_data()
-    cfg = Config(model=a.model, stride=7 if a.fast else 1)
+    cfg = Config(model=a.model, stride=7 if a.fast else 1, retrain_days=a.retrain_days)
     make = factory(a.model)
-    summary = run(make, cfg, data, a.run_id)
     out = ROOT / "experiments" / "results" / a.run_id
+    if a.finalize:
+        summary = finalize(pd.read_parquet(out / "predictions.parquet"), cfg, data, a.run_id, None)
+    else:
+        summary = run(make, cfg, data, a.run_id)
     if not a.skip_leakage:
         leak = leakage.run_all(make, data, cfg)
         (out / "leakage.json").write_text(json.dumps(leak, indent=2, default=float))
