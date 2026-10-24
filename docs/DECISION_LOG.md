@@ -399,3 +399,21 @@ Slices (Brier, B4 vs best of B2/B3): better on leg 1 (+0.9%), leg 2 (+1.7%), arr
 Caveats: (1) B4 has the worst calibration of the three useful baselines (ECE 0.016 vs 0.005 for B2); calibration is backlog idea M14. (2) B4 uses the real tail rotations from BTS. Live, these must come from tomorrow's schedule. An early AeroAPI check (2026-10-24, 30 flights, about 12 hours ahead) had tail numbers for 28 of 30; F1 measures this properly. (3) B4 transitions ignore carrier, which likely explains the regional gap. (4) B4's full run used code from commit f097685; a later change (one pseudo-observation per bucket shape, commit 0b443f4) changes its forecasts by a negligible amount. Results in experiments/results/B*-full/.
 
 Linked: HANDOFF §2.7, §6 step 3; DL-015; EXP-001; F1, M14
+
+---
+
+## DL-021 — A leak our tests could not see: BTS "schedule" fields written after the fact
+Date: 2026-10-24
+Status: Tested — dropped (the leaky features); EXP-001 first run invalid
+Question: Are all the "schedule" fields in BTS really known the night before?
+Options considered: trust the BTS tail rotation as tomorrow's plan; treat fields shaped by same-day operations as outcomes.
+How we decided: EXP-001's first screen beat B4 by 7.7% Brier and 12.7% CRPS, far above the 2–5% we expected. We checked the outcomes behind its top features on the dev period.
+Decision: Never use `chain_break` or "tail missing" as inputs. B4 no longer restarts a plane's chain at a break. LightGBM trains only on flights with a known tail (flights without one are still forecast and scored).
+
+Simple:
+Our first machine-learning model looked too good, so we went looking for a cheat. We found one hiding in the government data. When a flight is cancelled, airlines often leave the plane's ID blank. When a plane breaks down, the airline swaps in another plane, and the records show the swap. Neither of those can be known the night before; they are written down after things go wrong. The model had learned "blank plane ID means cancelled." We removed those clues and are re-running the test.
+
+Technical:
+Dev period 2023-01..2025-06. Flights with no tail number: 931, of which 100% were cancelled (vs 1.2% overall). Flights whose previous leg ended elsewhere (chain break, mostly tail swaps): 4,572, of which 24.3% were cancelled and 40.7% delayed 15+ min (vs 1.1% and 20.0% without a break). BTS records the tail that actually flew, so both fields encode same-day disruption. The future-scramble test cannot catch this, because BTS presents these as schedule columns: their values never change when outcomes are permuted. `leg_number` is blank exactly when the tail is blank, so the fix also removes no-tail rows from LightGBM training (they stay in evaluation, never dropped). B4 used breaks to restart a chain, which leaked indirectly through its history features; B4 rerun as B4v2 and its feature store rebuilt. Residual risk: `prev_origin` and `n_legs_day` also come from the realized rotation and can shift after swaps. The clean fix is tomorrow's planned rotation (F1; live AeroAPI tails, 28 of 30 known about 12 h ahead in a first check). Lesson for the protocol: any gain far above expectation gets an outcome-by-feature audit before it counts.
+
+Linked: EXP-001, DL-016, DL-020, F1
