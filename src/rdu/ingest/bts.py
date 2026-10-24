@@ -22,11 +22,13 @@ OUTCOME_COLS = [
 ]
 # Diverted flights have no arrival time; treat the outcome as known this long after schedule.
 DIVERTED_KNOWN_AFTER = pd.Timedelta(hours=6)
+# Codes newer than the airportsdata table. DJT = Palm Beach Intl (BTS city name), seen from 2026-08.
+TZ_OVERRIDES = {"DJT": "America/New_York"}
 
 
 def _local_to_utc(date: pd.Series, hhmm: pd.Series, airport: pd.Series) -> pd.Series:
     """Local wall-clock (date + hhmm) at each airport -> UTC timestamp."""
-    tz_of = {k: v["tz"] for k, v in airportsdata.load("IATA").items()}
+    tz_of = {**{k: v["tz"] for k, v in airportsdata.load("IATA").items()}, **TZ_OVERRIDES}
     tz = airport.map(tz_of)
     missing = sorted(airport[tz.isna()].unique())
     if missing:
@@ -54,7 +56,7 @@ def clean_legs(raw: pd.DataFrame) -> pd.DataFrame:
     d = pd.DataFrame({
         "flight_date": pd.to_datetime(raw["FlightDate"]).dt.date,
         "carrier": raw["Reporting_Airline"].astype(str),
-        "flight_number": raw["Flight_Number_Reporting_Airline"].astype(int),
+        "flight_number": raw["Flight_Number_Reporting_Airline"].astype("Int64"),  # 1 leg (F9 MIA-ATL 2024-08-25) has none
         "tail": raw["Tail_Number"].astype("string"),
         "origin": raw["Origin"].astype(str),
         "dest": raw["Dest"].astype(str),
