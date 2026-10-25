@@ -12,7 +12,7 @@ import pandas as pd
 from rdu.eval.walkforward import ROOT, Config, compare, finalize, load_data, run
 from rdu.models.baselines import MODELS
 
-LEARNED = ["LGBM", "LGBM_WX"]
+LEARNED = ["LGBM", "LGBM_WX", "LGBM_FULL"]
 
 
 def factory(name: str):
@@ -27,7 +27,15 @@ def factory(name: str):
         store = history.load()
         wx = weather.load()
         return lambda d: LGBMBuckets(store, wx_store=wx)
+    if name == "LGBM_FULL":
+        from rdu.features import history, position, weather
+        from rdu.models.flight_level import LGBMBuckets
+        store = history.load()
+        wx = weather.load()
+        pos = position.load()
+        return lambda d: LGBMBuckets(store, wx_store=wx, pos_store=pos)
     return lambda d: MODELS[name]()
+
 
 
 

@@ -74,3 +74,14 @@ def test_weather_issue_time_respects_cutoff():
     assert res["passed"]
     assert res["n_late"] == 0
 
+
+def test_position_features_respect_cutoff():
+    from rdu.features import position
+    df = position.load()
+    assert len(df) == 533241
+    # Planes still airborne at 23:00 ET cutoff must have NaN arrival delays (no actual outcome peek)
+    airborne = df["prev_day_completed_before_cutoff"] == 0.0
+    assert df.loc[airborne, "prev_day_last_arr_delay"].isna().all()
+    assert df.loc[airborne, "prev_day_ended_late15"].isna().all()
+
+
