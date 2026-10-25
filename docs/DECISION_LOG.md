@@ -436,3 +436,22 @@ EXP-001b uses 5-class LightGBM (300 trees, lr 0.05, 63 leaves, min 200 data in l
 
 Linked: EXP-001, DL-020, DL-021, M1
 
+---
+
+## DL-023 — EXP-002: Point-in-time forecast weather delivers another major leap
+Date: 2026-10-25
+Status: Tested — kept (fast screen passed)
+Question: Does adding night-before forecast weather (TAF, NBM station probabilities, day-worst indicators, and SPC Day 2 convective outlook) improve delay probabilities beyond rotation and history features?
+Options considered: EXP-001b (no weather); LGBM_WX with 77 forecast weather features issued before 22:30 ET.
+How we decided: Walk-forward fast screen (stride 8, 114 days, 37,087 flights, 2023-01..2025-06), paired 7-day block bootstrap (2,000 resamples), point-in-time verification across 527,415 flights.
+Decision: EXP-002 kept. Brier skill +3.37% and CRPS skill +4.91% over EXP-001b (+10.46% Brier and +14.0% CRPS over champion B4v2).
+
+Simple:
+We added official weather forecasts published before 10:30 pm the night before. This includes airport forecasts for wind, low clouds, fog, and thunderstorms at RDU, at destination cities, and at the plane's starting airport earlier in the day. Knowing the weather forecast cuts our errors even further, especially on evening flights when thunderstorms disrupt flights across the country. Calibration improved sharply: the forecast probabilities are now remarkably trustworthy.
+
+Technical:
+LGBM_WX adds 77 numerical features from compact TAF, NBM station, and SPC Day 2 products frozen at 22:30 ET. Over 37,087 walk-forward flights: Brier 0.1371 vs 0.1419 (+3.37% skill over EXP-001b, +10.46% over B4v2; paired 7-day block bootstrap 95% CI [-0.0069, -0.0030], excludes zero); CRPS 11.43 vs 12.02 (+4.91% skill over EXP-001b, +13.99% over B4v2; CI [-0.819, -0.402]); log loss 0.6865 vs 0.7130 (-0.0265); ECE dropped from 0.0147 to 0.0093 (a 37% reduction in calibration error); PIT central coverage held at 79.96%. Major slice gains on afternoon/evening flights (Hour 18–20 CRPS improved by 1.05 min; Hour 21–23 by 1.17 min) and later rotation legs (Leg 4+ CRPS improved by 1.03 min). Weather leakage check confirmed 0 flights had weather issued after the 22:30 ET cutoff.
+
+Linked: EXP-002, EXP-001, DL-011, DL-021, DL-022, F8, F10, F11, F12
+
+
