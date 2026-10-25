@@ -20,8 +20,9 @@ ROUNDS = 300
 
 
 class LGBMBuckets:
-    def __init__(self, store: pd.DataFrame, params: dict | None = None, rounds: int = ROUNDS):
-        self.store, self.params, self.rounds = store, {**PARAMS, **(params or {})}, rounds
+    def __init__(self, store: pd.DataFrame, params: dict | None = None, rounds: int = ROUNDS,
+                 wx_store: pd.DataFrame | None = None):
+        self.store, self.params, self.rounds, self.wx_store = store, {**PARAMS, **(params or {})}, rounds, wx_store
 
     def _frame(self, rows: pd.DataFrame) -> pd.DataFrame:
         d = pd.to_datetime(rows["forecast_date"])
@@ -42,10 +43,17 @@ class LGBMBuckets:
         }, index=rows.index)
         hist_feats = self.store.reindex(rows["flight_id"])
         hist_feats.index = rows.index
-        X = pd.concat([X, hist_feats], axis=1)
+        parts = [X, hist_feats]
+        if self.wx_store is not None:
+            wx_cols = [c for c in self.wx_store.columns if c != "wx_issue_max_utc"]
+            wx_feats = self.wx_store[wx_cols].reindex(rows["flight_id"])
+            wx_feats.index = rows.index
+            parts.append(wx_feats)
+        X = pd.concat(parts, axis=1)
         for c in CATEGORICAL:
             X[c] = pd.Categorical(X[c].astype(object), categories=self.cats[c])
         return X.astype({c: float for c in X.columns if c not in CATEGORICAL})
+
 
     def fit(self, hist: History) -> None:
         f = hist.flights[hist.flights["bucket"] >= 0]

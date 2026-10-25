@@ -417,3 +417,22 @@ Technical:
 Dev period 2023-01..2025-06. Flights with no tail number: 931, of which 100% were cancelled (vs 1.2% overall). Flights whose previous leg ended elsewhere (chain break, mostly tail swaps): 4,572, of which 24.3% were cancelled and 40.7% delayed 15+ min (vs 1.1% and 20.0% without a break). BTS records the tail that actually flew, so both fields encode same-day disruption. The future-scramble test cannot catch this, because BTS presents these as schedule columns: their values never change when outcomes are permuted. `leg_number` is blank exactly when the tail is blank, so the fix also removes no-tail rows from LightGBM training (they stay in evaluation, never dropped). B4 used breaks to restart a chain, which leaked indirectly through its history features; B4 rerun as B4v2 and its feature store rebuilt. Residual risk: `prev_origin` and `n_legs_day` also come from the realized rotation and can shift after swaps. The clean fix is tomorrow's planned rotation (F1; live AeroAPI tails, 28 of 30 known about 12 h ahead in a first check). Lesson for the protocol: any gain far above expectation gets an outcome-by-feature audit before it counts.
 
 Linked: EXP-001, DL-016, DL-020, F1
+
+---
+
+## DL-022 — EXP-001b: First learned model beats the Markov baseline
+Date: 2026-10-25
+Status: Tested — kept (fast screen passed)
+Question: Does a gradient-boosted decision tree using rotation, buffer and point-in-time baseline features beat the Markov chain baseline once post-hoc BTS fields are removed?
+Options considered: B4 Markov baseline (champion-000); LightGBM 5-class bucket model.
+How we decided: Walk-forward fast screen (stride 8, 114 days, 37,087 flights, 2023-01..2025-06), paired 7-day block bootstrap (2,000 resamples), all leakage tests passed.
+Decision: EXP-001b passes the fast screen decisively. Brier skill +7.3%, CRPS skill +9.6%.
+
+Simple:
+Once we stripped out the hidden cheats in the government data, our first machine-learning model still clearly beat the simple methods. It looks at how many flights the plane has already flown today, how much buffer time the airline scheduled between flights, and the honest baseline forecasts made the night before. It is much better at predicting regional airlines and early morning flights.
+
+Technical:
+EXP-001b uses 5-class LightGBM (300 trees, lr 0.05, 63 leaves, min 200 data in leaf, no weather). Compared against B4v2 on the same 37,087 flights: Brier 0.1419 vs 0.1531 (+7.33% skill; 7-day block bootstrap 95% CI [-0.0134, -0.0089]), CRPS 12.02 vs 13.29 (+9.56% skill; CI [-1.501, -1.082]), log loss 0.7130 vs 0.7560 (-0.043), ECE 0.0147 (-0.0001), PIT coverage 80.0%. Regional carrier slice Brier dropped to 0.1235 (recovering B4's 9.5% deficit). Leakage suite: future-scramble max diff 0.0, canary detected, shuffled-label pass.
+
+Linked: EXP-001, DL-020, DL-021, M1
+

@@ -71,6 +71,22 @@ def check_shuffled(make_model, data: Data, cfg: Config, tol: float = 0.001) -> d
             "passed": shuffled["brier"] >= clim["brier"] - tol}
 
 
+def check_weather_issue_time(data: Data) -> dict:
+    """Verify that every weather feature row was issued before that day's 23:00 ET cutoff."""
+    from rdu.features import weather as W
+    try:
+        wx = W.load()
+    except Exception as e:
+        return {"test": "weather_issue_time", "passed": False, "error": str(e)}
+    u_dates = pd.Series(data.flights["forecast_date"].unique())
+    date_map = dict(zip(u_dates, u_dates.map(cutoff_utc)))
+    cutoffs = data.flights["forecast_date"].map(date_map).to_numpy()
+    max_issue = wx.loc[data.flights["flight_id"], "wx_issue_max_utc"].to_numpy()
+    valid = pd.Series(max_issue).notna().to_numpy()
+    late = int((max_issue[valid] > cutoffs[valid]).sum())
+    return {"test": "weather_issue_time", "passed": late == 0, "n_checked": int(valid.sum()), "n_late": late}
+
+
 def run_all(make_model, data: Data, cfg: Config, n_days: int = 4) -> dict:
     """Fast-mode settings: sample days spread over the window, shuffled test on stride-28 days."""
     all_days = eval_days(cfg)
@@ -79,5 +95,6 @@ def run_all(make_model, data: Data, cfg: Config, n_days: int = 4) -> dict:
     results = [check_future_scramble(make_model, data, cfg, sample),
                check_canary(data, cfg, sample[:1]),
                check_shuffled(make_model, data, fast),
-               {"test": "weather_issue_time", "passed": True, "note": "no weather features yet"}]
+               check_weather_issue_time(data)]
     return {"passed": all(r["passed"] for r in results), "results": results}
+

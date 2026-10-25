@@ -66,3 +66,11 @@ def test_lgbm_on_history_store_passes_future_scramble():
     make = lambda d: LGBMBuckets(store, params={"min_data_in_leaf": 5}, rounds=20)  # noqa: E731
     r = leakage.check_future_scramble(make, data, cfg, [date(2023, 1, 25), date(2023, 2, 5)])
     assert r["passed"]
+
+
+def test_weather_issue_time_respects_cutoff():
+    from rdu.eval.walkforward import load_data
+    res = leakage.check_weather_issue_time(load_data())
+    assert res["passed"]
+    assert res["n_late"] == 0
+
