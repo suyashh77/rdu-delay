@@ -6,6 +6,7 @@ Models are refit every `retrain_days`; between refits only `hist` passed to pred
 """
 import json
 import subprocess
+import sys
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timedelta
@@ -95,15 +96,21 @@ def eval_days(cfg: Config) -> list[date]:
 def predict_days(make_model: Callable, data: Data, cfg: Config, days: list[date]) -> pd.DataFrame:
     """Run the walk-forward loop; returns per-flight predictions + scores."""
     model, last_fit, out = None, None, []
-    for day in days:
+    total = len(days)
+    for i, day in enumerate(days):
         cut = cutoff_utc(day)
         hist = history(data, cut)
         if cfg.shuffle_labels:
             hist = shuffle_history(hist, seed=day.toordinal())
         if model is None or (day - last_fit).days >= cfg.retrain_days:
+            sys.stderr.write(f"[{day}] Refitting model (day {i+1}/{total})\n")
+            sys.stderr.flush()
             model = make_model(data)
             model.fit(hist)
             last_fit = day
+        elif (i % 50 == 0) or (i == total - 1):
+            sys.stderr.write(f"[{day}] Scoring day {i+1}/{total}\n")
+            sys.stderr.flush()
         targets, sched = schedule_view(data, day)
         if targets.empty:
             continue
