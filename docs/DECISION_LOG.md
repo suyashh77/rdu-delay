@@ -454,4 +454,23 @@ LGBM_WX adds 77 numerical features from compact TAF, NBM station, and SPC Day 2 
 
 Linked: EXP-002, EXP-001, DL-011, DL-021, DL-022, F8, F10, F11, F12
 
+---
+
+## DL-024 — EXP-003: Overnight aircraft positioning unlocks morning flight accuracy
+Date: 2026-10-25
+Status: Tested — kept (fast screen passed)
+Question: Does knowing where an aircraft spent the night and its arrival delay on day D-1 improve night-before forecasts, particularly on early morning Leg 1 flights?
+Options considered: EXP-002 (weather only); LGBM_FULL with 8 point-in-time overnight position features.
+How we decided: Walk-forward fast screen (stride 8, 114 days, 37,087 flights, 2023-01..2025-06), paired 7-day block bootstrap (2,000 resamples).
+Decision: EXP-003 kept. Brier skill +0.37% and CRPS skill +0.79% over EXP-002 (+10.79% Brier and +14.67% CRPS over champion B4v2).
+
+Simple:
+Where does a plane wake up in the morning? If yesterday's last flight arrived late, the crew has to get mandatory rest and mechanics can't finish overnight checks on time. If the plane ended up stranded at another airport, the morning flight is in serious trouble. Feeding the model the aircraft's overnight resting spot and arrival status cut our error on 6:00 AM departures by nearly half a minute per flight.
+
+Technical:
+LGBM_FULL adds 8 overnight position features from national aircraft chains. If an aircraft's last flight on D-1 landed after 23:00 ET, delay metrics are strictly NaN (no lookahead leak). Across 37,087 walk-forward flights: Brier 0.1366 vs 0.1371 (+0.37% skill over EXP-002, +10.79% vs B4v2; paired 7-day block bootstrap 95% CI [-0.00103, -0.00005], excludes zero); CRPS 11.34 vs 11.43 (+0.79% skill over EXP-002, +14.67% vs B4v2; CI [-0.1460, -0.0483]); log loss 0.6821 vs 0.6865; ECE fell to 0.00786; PIT coverage 80.12%. Slice impact was concentrated precisely where hypothesized: early morning flights (05–08) CRPS dropped from 7.96 to 7.57 min (-0.393 min error reduction); Leg 1 flights CRPS dropped from 8.43 to 8.19 min (-0.243 min error reduction).
+
+Linked: EXP-003, EXP-002, DL-016, DL-021, DL-023, F2
+
+
 
