@@ -48,12 +48,23 @@ def _day_worst(table: pd.DataFrame, agg: dict, prefix: str) -> pd.DataFrame:
     return g
 
 
+def validate_issue_times(table: pd.DataFrame) -> None:
+    if table.empty:
+        return
+    dates = pd.to_datetime(table['forecast_date'])
+    cutoff = (dates - W.WEATHER_FREEZE_BEFORE_MIDNIGHT).dt.tz_localize(W.ET).dt.tz_convert('UTC')
+    issued = pd.to_datetime(table['issue_utc'], utc=True)
+    if (issued.isna() | (issued >= cutoff)).any():
+        raise ValueError('Weather input lacks a valid pre-freeze issue timestamp')
+
+
 def build(data: Data) -> pd.DataFrame:
     f = data.flights
     legs = data.legs
     taf, nbs, spc = W.load("taf"), W.load("nbs"), W.load("spc")
     for t in (taf, nbs, spc):
         t["forecast_date"] = pd.to_datetime(t["forecast_date"]).dt.date
+        validate_issue_times(t)
 
     rdu_time = f["sched_rdu_utc"]
     other_time = np.where(f["direction"] == "dep", f["sched_arr_utc"], f["sched_dep_utc"])
@@ -90,6 +101,11 @@ def build(data: Data) -> pd.DataFrame:
     covered = set(spc["station"].unique())  # no outlook row on a covered station = no risk area (0)
     X["rdu_spc_day2"] = spc_i.reindex(key_rdu).fillna(0).to_numpy()
     X["oth_spc_day2"] = np.where(pd.Series(other_stn).isin(covered), spc_i.reindex(key_oth).fillna(0).to_numpy(), np.nan)
+    # Include timestamps from day-worst and SPC features, not only sampled hours.
+    for source_name, source in [('taf', taf), ('nbs', nbs), ('spc', spc)]:
+        issued = source.groupby(['station', 'forecast_date'])['issue_utc'].max()
+        for place_name, keys in [('rdu', key_rdu), ('oth', key_oth)]:
+            X[f'{place_name}_{source_name}_source_issue_utc'] = issued.reindex(keys).to_numpy()
     X["wx_issue_max_utc"] = X[[c for c in X.columns if c.endswith("issue_utc")]].max(axis=1)
     issue_cols = [c for c in X.columns if c.endswith("_issue_utc")]
     X = X.drop(columns=issue_cols)

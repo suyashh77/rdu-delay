@@ -33,8 +33,8 @@ def build(data: Data) -> pd.DataFrame:
 
     # Aggregate yesterday's legs per airframe
     g = legs.groupby(["flight_date", "tail"])
-    last_legs = g.last().reset_index()
-    last_legs["n_legs_yest"] = g.size().to_numpy()
+    last_legs = g.tail(1).copy().reset_index(drop=True)
+    last_legs = last_legs.merge(g.size().rename("n_legs_yest").reset_index(), on=["flight_date", "tail"], validate="one_to_one")
     last_legs["next_date"] = last_legs["flight_date"] + timedelta(days=1)
 
     # Merge with today's RDU flights
@@ -80,12 +80,17 @@ def build(data: Data) -> pd.DataFrame:
     })
     out.index = flights["flight_id"].to_numpy()
 
-    return out.astype("float32")
+    out = out.astype("float32")
+    out.attrs["feature_version"] = "position-last-row-v2"
+    return out
 
 
 
 def load() -> pd.DataFrame:
-    return pd.read_parquet(STORE)
+    frame = pd.read_parquet(STORE)
+    if frame.attrs.get("feature_version") != "position-last-row-v2":
+        raise ValueError("Position cache predates the last-leg fix. Rebuild with python -m rdu.features.position before running LGBM_FULL.")
+    return frame
 
 
 if __name__ == "__main__":

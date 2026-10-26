@@ -83,7 +83,7 @@ def check_weather_issue_time(data: Data) -> dict:
     cutoffs = data.flights["forecast_date"].map(date_map).to_numpy()
     max_issue = wx.loc[data.flights["flight_id"], "wx_issue_max_utc"].to_numpy()
     valid = pd.Series(max_issue).notna().to_numpy()
-    late = int((max_issue[valid] > cutoffs[valid]).sum())
+    late = int((max_issue[valid] >= cutoffs[valid]).sum())
     return {"test": "weather_issue_time", "passed": late == 0, "n_checked": int(valid.sum()), "n_late": late}
 
 

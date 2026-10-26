@@ -14,10 +14,10 @@ $faaTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -Repet
 Register-ScheduledTask -TaskName "rdu-faa-status" -Action $faaAction -Trigger $faaTrigger -Settings $settings `
     -Description "RDU delay project: FAA NAS status XML every 15 min (free)" -Force | Out-Null
 
-$nAction = New-ScheduledTaskAction -Execute $py -Argument "-m rdu.ingest.live nightly" -WorkingDirectory $root
+$nAction = New-ScheduledTaskAction -Execute $py -Argument "-m rdu.ingest.live pipeline" -WorkingDirectory $root
 $nTrigger = New-ScheduledTaskTrigger -Daily -At "22:40"
 Register-ScheduledTask -TaskName "rdu-aeroapi-nightly" -Action $nAction -Trigger $nTrigger -Settings $settings `
-    -Description "RDU delay project: AeroAPI tomorrow's KRDU schedule, capped at 4.50 USD/month" -Force | Out-Null
+    -Description "RDU delay project: Collect RDU schedule, publish frozen forecasts, and refresh actual departures; capped at 4.50 USD/month" -Force | Out-Null
 
 Get-ScheduledTask -TaskName "rdu-*" | Select-Object TaskName, State,
     @{n = 'NextRun'; e = { (Get-ScheduledTaskInfo $_).NextRunTime } } | Format-Table -AutoSize
