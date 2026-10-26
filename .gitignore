@@ -1,6 +1,10 @@
 .venv/
 data/
-experiments/results/
+experiments/
+docs/
+web/
+.agents/
+START_HERE.md
 __pycache__/
 *.pyc
 .env
