@@ -18,7 +18,7 @@ FAA_URL = 'https://nasstatus.faa.gov/api/airport-status-information'
 AEROAPI = 'https://aeroapi.flightaware.com/aeroapi'
 PRICE_PER_PAGE = {'scheduled_departures': .005, 'scheduled_arrivals': .005, 'departures': .005}
 MAX_PAGES = 25
-MONTHLY_CAP = 4.50
+MONTHLY_CAP = 5.00
 RATE_SLEEP_S = 7
 log = logging.getLogger('rdu.live')
 
