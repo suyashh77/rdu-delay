@@ -9,7 +9,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "experiments" / "results"
-BRAIN_DIR = Path(r"C:\Users\19193\.gemini\antigravity-ide\brain\fee4234f-9bb8-44d8-9516-eae7bb3b8b2d")
+BRAIN_DIR = Path(r"C:\Users\19193\.gemini\antigravity-ide\brain\08eeab79-2fd2-4ba0-a42e-b49b1cde1a39")
 
 # 1. Load real prediction data
 pred_df = pd.read_parquet(RESULTS / "EXP-003-fast" / "predictions.parquet")
@@ -31,7 +31,7 @@ fig.patch.set_facecolor("#ffffff")
 # ----------------- PANEL 1: Model Progression -----------------
 ax1 = axes[0]
 models = ["B4v2 Markov\n(Baseline)", "EXP-001b\n(+ Rotations)", "EXP-002\n(+ Weather)", "EXP-003\n(+ Positioning)"]
-brier = [0.1531, 0.1419, 0.1371, 0.1366]
+brier = [0.1531, 0.1419, 0.1371, 0.1368]
 crps = [13.29, 12.02, 11.43, 11.34]
 
 x = np.arange(len(models))
@@ -75,13 +75,13 @@ ax2.fill_between(calib["pred"], calib["pred"], calib["true"], color="#6366f1", a
 
 ax2.set_xlabel("Predicted Probability of Delay ≥ 15m", fontsize=11, fontweight="bold")
 ax2.set_ylabel("Observed Delay Fraction", fontsize=11, fontweight="bold")
-ax2.set_title("(B) Reliability Curve: Empirical Calibration\n(ECE = 0.00786 | 80% Coverage = 80.12%)", fontsize=12, fontweight="bold", pad=12)
+ax2.set_title("(B) Reliability Curve: Empirical Calibration\n(ECE = 0.00800 | 80% Coverage = 80.18%)", fontsize=12, fontweight="bold", pad=12)
 ax2.set_xlim(-0.02, 1.02)
 ax2.set_ylim(-0.02, 1.02)
 ax2.grid(True, linestyle="--", alpha=0.5)
 
 # Add sample counts annotation
-ax2.text(0.05, 0.85, "Expected Calibration Error:\nECE = 0.00786\n80% Interval Coverage: 80.12%\nEvaluated on 37,087 flights",
+ax2.text(0.05, 0.85, "Expected Calibration Error:\nECE = 0.00800\n80% Interval Coverage: 80.18%\nEvaluated on 37,087 flights",
          transform=ax2.transAxes, fontsize=9.5, verticalalignment="top",
          bbox=dict(boxstyle="round,pad=0.5", facecolor="#f8fafc", edgecolor="#cbd5e1", alpha=0.9))
 ax2.legend(loc="lower right", frameon=True, fontsize=9)
@@ -90,8 +90,8 @@ ax2.legend(loc="lower right", frameon=True, fontsize=9)
 ax3 = axes[2]
 slices = ["Early Morning\n(05:00–08:59 AM)\nOvernight Position", "Evening\n(18:00–23:59 PM)\nHub Weather"]
 base_crps = [8.56, 16.48]
-final_crps = [7.57, 14.81]
-deltas = ["-0.99 min\n(-11.6%)", "-1.67 min\n(-10.1%)"]
+final_crps = [7.59, 14.81]
+deltas = ["-0.97 min\n(-11.3%)", "-1.67 min\n(-10.1%)"]
 
 x_s = np.arange(len(slices))
 w_s = 0.32
@@ -121,6 +121,7 @@ plt.tight_layout()
 out_brain = BRAIN_DIR / "rdu_delay_benchmark_results.png"
 out_docs = ROOT / "docs" / "rdu_delay_benchmark_results.png"
 
+BRAIN_DIR.mkdir(parents=True, exist_ok=True)
 plt.savefig(out_brain, dpi=300, bbox_inches="tight")
 plt.savefig(out_docs, dpi=300, bbox_inches="tight")
 print(f"Saved figure to:\n1. {out_brain}\n2. {out_docs}")

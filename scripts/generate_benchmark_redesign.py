@@ -7,7 +7,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "experiments" / "results"
-BRAIN_DIR = Path(r"C:\Users\19193\.gemini\antigravity-ide\brain\fee4234f-9bb8-44d8-9516-eae7bb3b8b2d")
+BRAIN_DIR = Path(r"C:\Users\19193\.gemini\antigravity-ide\brain\08eeab79-2fd2-4ba0-a42e-b49b1cde1a39")
 
 # 1. Load real prediction data for calibration curve
 pred_df = pd.read_parquet(RESULTS / "EXP-003-fast" / "predictions.parquet")
@@ -32,7 +32,7 @@ models = [
     "LightGBM v3 (Final)\n(+ Full Positioning)"
 ]
 crps = [13.29, 12.02, 11.43, 11.34]
-brier = [0.1531, 0.1419, 0.1371, 0.1366]
+brier = [0.1531, 0.1419, 0.1371, 0.1368]
 
 x = np.arange(len(models))
 colors = ["#64748b", "#3b82f6", "#0284c7", "#0f766e"]
@@ -67,9 +67,9 @@ for idx, (bar, c_val, b_val) in enumerate(zip(bars, crps, brier)):
 
 # HERO CALLOUT: Prominently feature the 14.67% CRPS improvement in a clean top card
 hero_text = (
-    "PRIMARY RESULT: −14.67% CRPS IMPROVEMENT\n"
-    "• CRPS Delay Error: 13.29 min → 11.34 min (−1.95 min / −14.67%)\n"
-    "• Brier Probability Error: 0.1531 → 0.1366 (−10.78% Skill)\n"
+    "PRIMARY RESULT: −14.65% CRPS IMPROVEMENT\n"
+    "• CRPS Delay Error: 13.29 min → 11.34 min (−1.95 min / −14.65%)\n"
+    "• Brier Probability Error: 0.1531 → 0.1368 (−10.70% Skill)\n"
     "• Exact Baseline: B4v2 Markov Transition Matrix (No Leaked Features)"
 )
 ax1.text(0.50, 0.94, hero_text, transform=ax1.transAxes, fontsize=10.5, fontweight="bold",
@@ -90,8 +90,8 @@ ax2.fill_between(calib["pred"], calib["pred"], calib["true"], color="#0f766e", a
 # Reliability statistics callout (Empirical validation, not mathematical proof)
 calib_stats = (
     "EMPIRICAL CALIBRATION ACCURACY:\n"
-    "• Expected Calibration Error (ECE): 0.00786\n"
-    "• 80% Prediction Interval Coverage: 80.12%\n"
+    "• Expected Calibration Error (ECE): 0.00800\n"
+    "• 80% Prediction Interval Coverage: 80.18%\n"
     "• Decision Threshold: Departure Delay ≥ 15 min\n"
     "• Strong empirical reliability across all 10 risk deciles"
 )
