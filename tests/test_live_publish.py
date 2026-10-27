@@ -94,7 +94,7 @@ def test_pagination_rejects_other_host():
 def test_budget_skips_without_paid_request(tmp_path,monkeypatch):
     monkeypatch.setattr(live,'LIVE',tmp_path)
     monkeypatch.setattr(live,'_api_key',lambda:'not-a-real-key')
-    monkeypatch.setattr(live,'month_spend',lambda key:4.49)
+    monkeypatch.setattr(live,'month_spend',lambda key:4.96)
     monkeypatch.setattr(live,'_get',lambda *a,**k:pytest.fail('Should not issue paid request'))
     assert live.collect(date(2026,10,27),max_pages=10)['skipped']
     assert not (tmp_path/'aeroapi'/'.collection.lock').exists()

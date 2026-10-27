@@ -350,6 +350,45 @@ def build_live_day(target, training, root=ROOT, now=None):
     return {'date':str(target),'label':target.strftime('%a, %b %d'),'weekday':target.strftime('%A'),
             'metadata':metadata,'stats':daily_stats(flights),'flights':flights}
 
+def build_upcoming_day(target, now=None):
+    now = now or datetime.now(timezone.utc)
+    cutoff = cutoff_utc(target).to_pydatetime()
+    cutoff_eve = target - timedelta(days=1)
+    return {
+        'date': str(target),
+        'label': target.strftime('%a, %b %d'),
+        'weekday': target.strftime('%A'),
+        'metadata': {
+            'model_version': MODEL_VERSION,
+            'champion_id': None,
+            'forecast_status': 'upcoming',
+            'inputs_cutoff_utc': iso(cutoff),
+            'schedule_retrieved_at_utc': None,
+            'schedule_complete': False,
+            'published_at_utc': None,
+            'generated_at_utc': iso(now),
+            'cutoff_label': f"{cutoff_eve.strftime('%A, %b %d')} at 11:00 PM ET",
+            'training_end_date': None,
+            'outcomes_updated_at_utc': None,
+            'schedule_age_hours': None
+        },
+        'stats': {
+            'total_flights': 0,
+            'known_outcomes': 0,
+            'pending_outcomes': 0,
+            'on_time_flights': 0,
+            'delayed_flights': 0,
+            'cancelled_flights': 0,
+            'observed_delay_pct': None,
+            'predicted_delay_pct': None,
+            'avg_actual_delay_min': None,
+            'avg_predicted_delay_min': None,
+            'interval_coverage_pct': None,
+            'scored_flights': 0
+        },
+        'flights': []
+    }
+
 def historical_weeks(training, root=ROOT):
     """Render saved B4v2 walk-forward predictions, with matching model explanations."""
     path=root/'experiments'/'results'/'B4v2-full'/'predictions.parquet'
@@ -412,9 +451,17 @@ def _publish(root=ROOT, now=None):
     else:
         raise FileNotFoundError(f'Neither {clean_path} nor {res_path} exists')
     # Filter before any use of labels: the locked holdout is not used for training or evaluation here.
-    training = training[training['forecast_date'] < HOLDOUT_START]
-    days = [build_live_day(today + timedelta(days=i), training, root, None if realtime else now) for i in [-1, 0, 1]]
-    days = [d for d in days if d]
+    # Full week view from Sunday to Sunday (8 days: preceding Sunday through following Sunday)
+    days_since_sunday = (today.weekday() + 1) % 7
+    start_sunday = today - timedelta(days=days_since_sunday)
+    target_dates = [start_sunday + timedelta(days=i) for i in range(8)]
+    days = []
+    for target in target_dates:
+        day = build_live_day(target, training, root, None if realtime else now)
+        if day is not None:
+            days.append(day)
+        elif target >= today:
+            days.append(build_upcoming_day(target, None if realtime else now))
     for day in days:
         scored = []
         for f in day['flights']:
