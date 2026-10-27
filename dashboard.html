@@ -1194,9 +1194,11 @@
       function defaultDay(week) {
         if (!week.is_live) return 0;
         const today = new Intl.DateTimeFormat('sv-SE', {timeZone:'America/New_York'}).format(new Date());
-        const future = week.days.findIndex(d => d.date > today);
         const current = week.days.findIndex(d => d.date === today);
-        return future >= 0 ? future : current >= 0 ? current : week.days.length - 1;
+        if (current >= 0) return current;
+        const future = week.days.findIndex(d => d.date > today && d.flights && d.flights.length > 0);
+        if (future >= 0) return future;
+        return Math.max(0, week.days.length - 1);
       }
 
       function setupUI() {
@@ -1271,10 +1273,13 @@
           const isLive = week.is_live;
           btn.className = `day-pill-btn ${isLive ? 'live-pill' : ''} ${i === currentDayIndex ? 'active' : ''}`;
           btn.setAttribute('aria-pressed', String(i === currentDayIndex));
+          const countText = (d.flights && d.flights.length > 0)
+            ? `${d.stats.total_flights} flights`
+            : (d.metadata && d.metadata.forecast_status === 'upcoming' ? 'Upcoming' : '0 flights');
           btn.innerHTML = `
             <span class="pill-weekday">${d.label.replace(/^[A-Za-z]+,?\s*/, '')}</span>
             <span class="pill-date">${d.weekday.split(' ')[0]}</span>
-            <span class="pill-count mono">${d.stats.total_flights} flights</span>
+            <span class="pill-count mono">${countText}</span>
           `;
           btn.addEventListener('click', () => {
             currentDayIndex = i;
@@ -1292,30 +1297,55 @@
         const week = data.weeks[currentWeekIndex];
         const day = week.days[currentDayIndex];
         statActiveDate.textContent = new Intl.DateTimeFormat('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric', timeZone:'UTC'}).format(new Date(day.date+'T12:00:00Z'));
-        const stats = day.stats;
-        kpiTotalFlights.textContent = stats.total_flights;
-        kpiTotalSub.textContent = `${stats.pending_outcomes ?? 0} outcomes pending`;
-        kpiPredRate.textContent = numberText(stats.predicted_delay_pct, '%');
-        kpiActualRate.textContent = numberText(stats.observed_delay_pct, '%');
-        kpiActualCountSub.textContent = stats.known_outcomes ? `${stats.delayed_flights} delayed / ${stats.known_outcomes} known outcomes` : 'No confirmed outcomes yet';
-        kpiAvgDelay.textContent = numberText(stats.avg_actual_delay_min, 'm');
-        kpiAvgPredSub.textContent = `predicted: ${numberText(stats.avg_predicted_delay_min, 'm')}`;
-        kpiCoverage.textContent = numberText(stats.interval_coverage_pct, '%');
+        const stats = day.stats || {};
+        const isUpcoming = day.metadata && day.metadata.forecast_status === 'upcoming';
+
+        if (isUpcoming) {
+          kpiTotalFlights.textContent = '--';
+          kpiTotalSub.textContent = 'Schedule opens 48h prior';
+          kpiPredRate.textContent = '--%';
+          kpiActualRate.textContent = '--%';
+          kpiActualCountSub.textContent = 'Awaiting departure day';
+          kpiAvgDelay.textContent = '--m';
+          kpiAvgPredSub.textContent = 'predicted: --m';
+          kpiCoverage.textContent = '--%';
+        } else {
+          kpiTotalFlights.textContent = stats.total_flights ?? '--';
+          kpiTotalSub.textContent = `${stats.pending_outcomes ?? 0} outcomes pending`;
+          kpiPredRate.textContent = numberText(stats.predicted_delay_pct, '%');
+          kpiActualRate.textContent = numberText(stats.observed_delay_pct, '%');
+          kpiActualCountSub.textContent = stats.known_outcomes ? `${stats.delayed_flights} delayed / ${stats.known_outcomes} known outcomes` : 'No confirmed outcomes yet';
+          kpiAvgDelay.textContent = numberText(stats.avg_actual_delay_min, 'm');
+          kpiAvgPredSub.textContent = `predicted: ${numberText(stats.avg_predicted_delay_min, 'm')}`;
+          kpiCoverage.textContent = numberText(stats.interval_coverage_pct, '%');
+        }
+
         const meta = day.metadata || {};
         const status = document.getElementById('dataStatus');
         const stamp = meta.schedule_retrieved_at_utc || data.generated_at_utc;
         const age = stamp ? (Date.now() - Date.parse(stamp)) / 3600000 : null;
-        const names = {published:'Published night-before forecast', provisional:'Provisional estimate', reconstructed:'Reconstructed estimate; excluded from scoring', unavailable:'No night-before forecast available', historical_backtest:'Historical walk-forward backtest'};
+        const names = {
+          published: 'Published night-before forecast',
+          provisional: 'Provisional estimate',
+          reconstructed: 'Reconstructed estimate; excluded from scoring',
+          unavailable: 'No night-before forecast available',
+          upcoming: 'Upcoming schedule',
+          historical_backtest: 'Historical walk-forward backtest'
+        };
         const parts = [names[meta.forecast_status] || 'Forecast status unavailable', `Model: ${meta.model_version || 'unavailable'}`];
-        if (week.is_live && stamp) parts.push(`Schedule saved ${new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(stamp))} ET`);
-        if (week.is_live && !meta.schedule_complete) parts.push('Partial schedule: some departures may be missing');
-        if (week.is_live && age > 24) parts.push('Schedule snapshot is over 24 hours old');
+        if (isUpcoming && meta.cutoff_label) {
+          parts.push(`Night-before forecast publishes ${meta.cutoff_label}`);
+        } else {
+          if (week.is_live && stamp) parts.push(`Schedule saved ${new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(stamp))} ET`);
+          if (week.is_live && !meta.schedule_complete) parts.push('Partial schedule: some departures may be missing');
+          if (week.is_live && age > 24) parts.push('Schedule snapshot is over 24 hours old');
+        }
         if (week.is_live && meta.training_end_date) parts.push(`Historical training data through ${meta.training_end_date}`);
-        if (week.is_live && day.date < new Intl.DateTimeFormat('sv-SE',{timeZone:'America/New_York'}).format(new Date()) && !stats.known_outcomes) parts.push('Actual departures have not been collected');
+        if (week.is_live && !isUpcoming && day.date < new Intl.DateTimeFormat('sv-SE',{timeZone:'America/New_York'}).format(new Date()) && !stats.known_outcomes) parts.push('Actual departures have not been collected');
         status.textContent = parts.join('. ') + '.';
         document.getElementById('modelIdentity').textContent = meta.model_version || 'Unavailable';
 
-        const carriers = [...new Set(day.flights.map(f => f.carrier_name))].sort();
+        const carriers = [...new Set((day.flights || []).map(f => f.carrier_name))].sort();
         const selectedAirline = airlineFilter.value;
         airlineFilter.innerHTML = '<option value="ALL">All Airlines</option>';
         carriers.forEach(c => {
@@ -1389,13 +1419,27 @@
       }
 
       function renderTable() {
+        const day = data.weeks[currentWeekIndex].days[currentDayIndex];
+        const isUpcoming = day.metadata && day.metadata.forecast_status === 'upcoming';
         const flights = sortFlights(getFilteredFlights());
+        const tableElem = document.querySelector('table.departures-table');
         tableBody.innerHTML = '';
 
-        tableCountDisplay.textContent = `Showing ${flights.length} of ${data.weeks[currentWeekIndex].days[currentDayIndex].flights.length} departures`;
+        if (isUpcoming) {
+          tableCountDisplay.textContent = 'Departures upcoming';
+          if (tableElem) tableElem.style.display = 'none';
+          tableEmptyState.style.display = 'block';
+          const cutoffText = day.metadata?.cutoff_label ? ` on ${day.metadata.cutoff_label}` : '';
+          tableEmptyState.innerHTML = `<strong>Upcoming Departure Schedule</strong>Night-before delay predictions for ${day.label} will be generated and published${cutoffText}.<br>Live FlightAware schedule feeds activate 48 hours prior to departure.`;
+          return;
+        }
+
+        if (tableElem) tableElem.style.display = '';
+        tableCountDisplay.textContent = `Showing ${flights.length} of ${(day.flights || []).length} departures`;
 
         if (flights.length === 0) {
           tableEmptyState.style.display = 'block';
+          tableEmptyState.textContent = 'No departures match your filter criteria. Try adjusting your search or filters.';
           return;
         } else {
           tableEmptyState.style.display = 'none';

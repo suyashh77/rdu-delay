@@ -199,4 +199,25 @@ header.site-header,.research-page main>header { border:0; margin-bottom:24px; pa
   }
 }
 
+.flight-page .empty-state {
+  padding: 56px 24px;
+  text-align: center;
+  color: #526071;
+  font-size: 14px;
+  line-height: 1.6;
+  background: #fafbfc;
+  border-radius: 6px;
+  margin: 12px 0;
+  border: 1px dashed #dce1e6;
+}
+
+.flight-page .empty-state strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 650;
+  color: #202831;
+  margin-bottom: 6px;
+  letter-spacing: -0.2px;
+}
+
 
