@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RDU Flight Delay Forecaster | 11:00 PM Cutoff Predictions</title>
+  <meta name="description" content="Simple, minimal operational table of all Raleigh-Durham (RDU) departures. Compare night-before 11:00 PM machine learning predictions against actual flight outcomes, including live departures for tomorrow.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ==========================================================================
+       MINIMALIST CLEAN WHITE DESIGN SYSTEM
+       High-contrast, pure white background (#ffffff), crisp black text (#111827)
+       ========================================================================== */
+    :root {
+      --bg: #ffffff;
+      --bg-subtle: #f8fafc;
+      --bg-hover: #f1f5f9;
+      --border: #e2e8f0;
+      --border-dark: #cbd5e1;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --text-light: #94a3b8;
+      
+      /* Functional colors */
+      --green-bg: #f0fdf4;
+      --green-border: #bbf7d0;
+      --green-text: #166534;
+
+      --amber-bg: #fffbeb;
+      --amber-border: #fde68a;
+      --amber-text: #92400e;
+
+      --red-bg: #fef2f2;
+      --red-border: #fecaca;
+      --red-text: #991b1b;
+
+      --blue-bg: #eff6ff;
+      --blue-border: #bfdbfe;
+      --blue-text: #1e40af;
+
+      --live-red: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.5;
+      padding: 0;
+      margin: 0;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .app-container {
+      max-width: 1560px;
+      margin: 0 auto;
+      padding: 24px 28px 60px 28px;
+    }
+
+    /* Top Navigation / Brand */
+    header.site-header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .header-title-block h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-title-block h1 .airport-tag {
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+    }
+
+    .header-title-block p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text);
+      background: #ffffff;
+      border: 1px solid var(--border-dark);
+      border-radius: 6px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .nav-btn:hover {
+      background: var(--bg-hover);
+      border-color: #94a3b8;
+    }
+
+    .nav-btn.primary {
+      background: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+    }
+
+    .nav-btn.primary:hover {
+      background: #334155;
+    }
+
+    .nav-btn.linkedin-btn {
+      background: #0077b5;
+      color: #ffffff;
+      border-color: #0077b5;
+    }
+
+    .nav-btn.linkedin-btn:hover {
+      background: #005582;
+    }
+
+    /* LinkedIn Share Callout Banner */
+    .linkedin-banner {
+      background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%);
+      border: 1px solid var(--blue-border);
+      border-left: 4px solid #0077b5;
+      padding: 14px 18px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .linkedin-banner-text strong {
+      color: #0077b5;
+    }
+
+    .linkedin-banner-text p {
+      font-size: 0.9rem;
+      color: var(--text);
+      margin-top: 2px;
+    }
+
+    /* Strict Cutoff Callout Box */
+    .cutoff-banner {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-dark);
+      border-left: 4px solid #0f172a;
+      padding: 12px 18px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .cutoff-banner .cutoff-text {
+      font-size: 0.88rem;
+      color: var(--text);
+      max-width: 1050px;
+    }
+
+    .cutoff-banner .cutoff-text strong {
+      font-weight: 700;
+      color: #000000;
+    }
+
+    .cutoff-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      background: #ffffff;
+      border: 1px solid var(--border-dark);
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    /* Simulation & Live Controls Card */
+    .sim-controls-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+
+    .sim-top-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .week-select-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .week-select-group label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .week-select {
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--text);
+      padding: 6px 12px;
+      border: 1px solid var(--border-dark);
+      border-radius: 6px;
+      background-color: #ffffff;
+      cursor: pointer;
+    }
+
+    .week-select:focus {
+      outline: 2px solid #0f172a;
+    }
+
+    .week-desc-text {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Day Pills (Simulate This Week / Live Schedule) */
+    .day-selector-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .day-pill-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 8px 14px;
+      background: #ffffff;
+      border: 1px solid var(--border-dark);
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s ease;
+      min-width: 130px;
+    }
+
+    .day-pill-btn:hover {
+      background: var(--bg-hover);
+      border-color: #94a3b8;
+    }
+
+    .day-pill-btn.active {
+      background: #0f172a;
+      border-color: #0f172a;
+      color: #ffffff;
+    }
+
+    .day-pill-btn.live-pill {
+      border-color: #fca5a5;
+    }
+
+    .day-pill-btn.live-pill.active {
+      background: #991b1b;
+      border-color: #991b1b;
+    }
+
+    .day-pill-btn .pill-weekday {
+      font-size: 0.76rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      opacity: 0.8;
+    }
+
+    .day-pill-btn .pill-date {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .day-pill-btn .pill-count {
+      font-size: 0.74rem;
+      opacity: 0.75;
+      margin-top: 2px;
+    }
+
+    .day-pill-btn.active .pill-count {
+      color: #cbd5e1;
+    }
+
+    /* Daily KPI Summary Bar */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .kpi-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 16px;
+    }
+
+    .kpi-card .kpi-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .kpi-card .kpi-value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .kpi-card .kpi-main-val {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .kpi-card .kpi-sub-val {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    /* Filter Toolbar */
+    .table-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+    }
+
+    .toolbar-left {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      flex-grow: 1;
+    }
+
+    .search-input-wrap {
+      position: relative;
+      min-width: 260px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 7px 12px 7px 30px;
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: var(--text);
+      background: #ffffff;
+      border: 1px solid var(--border-dark);
+      border-radius: 6px;
+    }
+
+    .search-input:focus {
+      outline: 2px solid #0f172a;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .filter-select {
+      padding: 7px 10px;
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: var(--text);
+      background: #ffffff;
+      border: 1px solid var(--border-dark);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .filter-pills {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .filter-btn {
+      padding: 5px 10px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .filter-btn:hover {
+      background: #e2e8f0;
+      color: var(--text);
+    }
+
+    .filter-btn.active {
+      background: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+      font-weight: 600;
+    }
+
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .flight-counter {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    /* THE SIMPLE DEPARTURES TABLE */
+    .table-wrapper {
+      background: #ffffff;
+      border: 1px solid var(--border-dark);
+      border-radius: 8px;
+      overflow-x: auto;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    table.departures-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+      text-align: left;
+    }
+
+    table.departures-table th {
+      background: #f8fafc;
+      color: #0f172a;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 10px 12px;
+      border-bottom: 2px solid var(--border-dark);
+      white-space: nowrap;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    table.departures-table th:hover {
+      background: #f1f5f9;
+    }
+
+    table.departures-table th .th-content {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    table.departures-table th .th-group-header {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      display: block;
+      font-weight: 500;
+      margin-bottom: 2px;
+      text-transform: none;
+    }
+
+    table.departures-table th.highlight-col {
+      background: #fffbeb;
+      color: #92400e;
+      border-bottom-color: #fde68a;
+    }
+
+    table.departures-table td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+      color: var(--text);
+    }
+
+    table.departures-table tbody tr {
+      cursor: pointer;
+      transition: background-color 0.1s ease;
+    }
+
+    table.departures-table tbody tr:hover {
+      background-color: #f8fafc;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+
+    .carrier-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      background: #f1f5f9;
+      border: 1px solid var(--border-dark);
+      border-radius: 4px;
+      color: #0f172a;
+    }
+
+    .flight-num {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .dest-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .dest-city {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      display: block;
+    }
+
+    .interval-pill {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 2px;
+    }
+
+    /* Risk Badges */
+    .badge-low { background: var(--green-bg); border-color: var(--green-border); color: var(--green-text); }
+    .badge-mod { background: var(--amber-bg); border-color: var(--amber-border); color: var(--amber-text); }
+    .badge-high { background: var(--red-bg); border-color: var(--red-border); color: var(--red-text); }
+    .badge-cancel { background: #0f172a; border-color: #0f172a; color: #ffffff; }
+
+    /* Actual Outcome Badges */
+    .act-ontime { background: var(--green-bg); border-color: var(--green-border); color: var(--green-text); font-weight: 600; }
+    .act-delay-mod { background: var(--amber-bg); border-color: var(--amber-border); color: var(--amber-text); font-weight: 600; }
+    .act-delay-high { background: var(--red-bg); border-color: var(--red-border); color: var(--red-text); font-weight: 600; }
+    .act-cancel { background: #0f172a; border-color: #0f172a; color: #ffffff; font-weight: 600; }
+    .act-scheduled { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; font-weight: 600; }
+
+    /* WHY HIGH RISK PREDICTED COLUMN STYLING */
+    .why-risk-container {
+      max-width: 320px;
+    }
+
+    .risk-reason-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-bottom: 3px;
+    }
+
+    .risk-reason-pill.red {
+      background: var(--red-bg);
+      border: 1px solid var(--red-border);
+      color: var(--red-text);
+    }
+
+    .risk-reason-pill.amber {
+      background: var(--amber-bg);
+      border: 1px solid var(--amber-border);
+      color: var(--amber-text);
+    }
+
+    .risk-reason-pill.green {
+      background: var(--green-bg);
+      border: 1px solid var(--green-border);
+      color: var(--green-text);
+    }
+
+    .risk-reason-detail {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .delta-correct { color: var(--green-text); font-weight: 600; font-size: 0.8rem; }
+    .delta-out { color: var(--amber-text); font-weight: 500; font-size: 0.8rem; }
+
+    /* Modal / Drawer */
+    .drawer-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(2px);
+      z-index: 1000;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .drawer-overlay.active { display: block; opacity: 1; }
+
+    .drawer {
+      position: fixed;
+      top: 0; right: 0;
+      width: 530px;
+      max-width: 95vw;
+      height: 100vh;
+      background: #ffffff;
+      box-shadow: -8px 0 24px rgba(0, 0, 0, 0.15);
+      z-index: 1001;
+      transform: translateX(100%);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .drawer.active { transform: translateX(0); }
+
+    .drawer-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      background: #f8fafc;
+    }
+
+    .drawer-header h2 { font-size: 1.25rem; font-weight: 700; color: var(--text); }
+    .drawer-header p { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; }
+
+    .close-drawer-btn {
+      background: transparent;
+      border: none;
+      font-size: 1.5rem;
+      line-height: 1;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 4px;
+    }
+
+    .drawer-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex-grow: 1;
+    }
+
+    .drawer-section { margin-bottom: 24px; }
+    .drawer-section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .drawer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .drawer-field {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+
+    .drawer-field-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+    .drawer-field-val { font-size: 0.95rem; font-weight: 600; color: var(--text); margin-top: 2px; }
+
+    /* Probability Distribution bar */
+    .prob-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 0.8rem; }
+    .prob-bar-label { width: 110px; color: var(--text); font-weight: 500; }
+    .prob-bar-track { flex-grow: 1; height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; }
+    .prob-bar-fill { height: 100%; background: #0f172a; border-radius: 5px; }
+    .prob-bar-pct { width: 45px; text-align: right; font-weight: 600; font-size: 0.78rem; }
+
+    footer.site-footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .empty-state { padding: 40px; text-align: center; color: var(--text-muted); }
+  </style>
+  <link rel="stylesheet" href="site.css">
+  <script src="site.js" defer></script>
+</head>
+<body class="flight-page"><a class="skip-link" href="#main-content">Skip to content</a>
+  <!-- Page Loading Overlay -->
+  <div id="pageLoadingOverlay" class="loading-overlay" role="status" aria-live="polite" aria-label="Loading flight departures">
+    <div class="loading-card">
+      <div class="loading-spinner"></div>
+      <div class="loading-title">RDU Flight Delay Forecaster</div>
+      <div id="loadingStatusText" class="loading-status">Loading departures data...</div>
+      <div class="loading-progress-track">
+        <div id="loadingProgressBar" class="loading-progress-bar"></div>
+      </div>
+    </div>
+  </div>
+<nav class="site-nav" aria-label="Main navigation"><a class="site-brand" href="departures.html"><span class="brand-code">RDU</span> Flight forecasts</a><div class="site-links"><a href="departures.html" aria-current="page">Departures</a><a href="benchmark_lab.html">Research</a><a href="preview_graphics.html">Figures</a></div></nav>
+
+  <main id="main-content" class="app-container">
+
+    <!-- Top Navigation Header -->
+    <header class="site-header">
+      <div class="header-title-block">
+        <h1>
+          Departures
+          <span class="airport-tag">RDU</span>
+        </h1>
+        <p>Raleigh–Durham International Airport</p>
+      </div>
+      <div class="header-actions">
+        <button hidden id="btnBannerCopy" type="button">Copy link</button>
+        <button id="btnCopyLinkedIn" class="nav-btn linkedin-btn" title="Copy a link to this page">
+          Copy link
+        </button>
+        <a href="benchmark_lab.html" class="nav-btn" title="View Machine Learning Benchmark & Calibration Curves">
+          Research
+        </a>
+        <button id="btnExportCsv" class="nav-btn primary" title="Download departures table as CSV">
+          Download CSV
+        </button>
+      </div>
+    </header>
+    <section class="schedule-section" aria-label="Choose departure date">
+      <div class="schedule-heading">
+        <div><h2>Departure schedule</h2><p id="weekDesc" class="week-desc-text"></p></div>
+        <div class="schedule-source"><label for="weekSelect">Schedule</label><select id="weekSelect" class="week-select"></select></div>
+      </div>
+      <div id="daySelectorGroup" class="day-selector-group" aria-label="Departure dates"></div>
+      <div class="schedule-bottom"><span id="statActiveDate" aria-live="polite"></span><span>All times Eastern</span></div>
+    </section>
+    <div id="dataStatus" class="data-status" role="status"></div>
+    <details class="forecast-note"><summary>About the forecasts</summary><p>Current departures use the B2 flight-number baseline, based on historical airline and flight-number outcomes. Weather and aircraft rotations are not used in live forecasts. Estimates are provisional until a complete schedule is saved and published during the 10:30–11:00 PM Eastern window. Historical dates use saved B4v2 backtest predictions. Reconstructed forecasts are excluded from accuracy scoring. Check your airline for current flight status.</p></details>
+
+    <!-- Daily KPI Metric Strip -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Departures</div>
+        <div class="kpi-value-row">
+          <span id="kpiTotalFlights" class="kpi-main-val mono">--</span>
+          <span id="kpiTotalSub" class="kpi-sub-val">scheduled flights</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Predicted delay rate</div>
+        <div class="kpi-value-row">
+          <span id="kpiPredRate" class="kpi-main-val mono">--%</span>
+          <span class="kpi-sub-val">expected delay &ge;15m</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Recorded delay rate</div>
+        <div class="kpi-value-row">
+          <span id="kpiActualRate" class="kpi-main-val mono">--%</span>
+          <span id="kpiActualCountSub" class="kpi-sub-val">delayed flights</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Average delay</div>
+        <div class="kpi-value-row">
+          <span id="kpiAvgDelay" class="kpi-main-val mono">--m</span>
+          <span id="kpiAvgPredSub" class="kpi-sub-val">predicted --m</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Prediction range coverage</div>
+        <div class="kpi-value-row">
+          <span id="kpiCoverage" class="kpi-main-val mono">--%</span>
+          <span class="kpi-sub-val">inside the 80% prediction range</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter & Search Toolbar -->
+    <div class="table-toolbar">
+      <div class="toolbar-left">
+        <div class="search-input-wrap">
+          
+          <input type="text" id="searchInput" class="search-input" aria-label="Search flights" placeholder="Search flight, airline or destination">
+        </div>
+
+        <select id="airlineFilter" aria-label="Airline" class="filter-select">
+          <option value="ALL">All Airlines</option>
+        </select>
+
+        <select id="timeFilter" aria-label="Departure time" class="filter-select">
+          <option value="ALL">All Departure Times</option>
+          <option value="MORNING">Early Morning (05:00 &ndash; 09:59)</option>
+          <option value="MIDDAY">Mid-Day (10:00 &ndash; 14:59)</option>
+          <option value="AFTERNOON">Afternoon (15:00 &ndash; 18:59)</option>
+          <option value="EVENING">Evening (19:00 &ndash; 23:59)</option>
+        </select>
+
+        <div class="filter-pills">
+          <button class="filter-btn active" data-filter="ALL">All Flights</button>
+          <button class="filter-btn" data-filter="HIGH_RISK">High Risk Only</button>
+          <button class="filter-btn" data-filter="DELAYED">Delayed (&ge;15m)</button>
+          <button class="filter-btn" data-filter="ONTIME">On-Time</button>
+          <button class="filter-btn" data-filter="CANCELLED">Cancelled</button>
+        </div>
+      </div>
+
+      <div class="toolbar-right">
+        <span id="tableCountDisplay" class="flight-counter">Showing -- flights</span>
+      </div>
+    </div>
+
+    <!-- THE DEPARTURES TABLE (WITH NEW 'WHY HIGH RISK PREDICTED' COLUMN) -->
+    <div class="table-options"><label><input id="detailColumns" type="checkbox"> Show aircraft and verification details</label><span>Select a flight for the full forecast</span></div><div class="table-wrapper" role="region" aria-label="Departures, scroll for more columns" tabindex="0">
+      <table class="departures-table" id="departuresTable">
+        <thead>
+          <tr>
+            <th data-sort="sched_dep">
+              <span class="th-group-header">Schedule</span>
+              <div class="th-content">Departure &uarr;&darr;</div>
+            </th>
+            <th data-sort="flight_no">
+              <span class="th-group-header">Flight</span>
+              <div class="th-content">Flight &uarr;&darr;</div>
+            </th>
+            <th data-sort="dest">
+              <span class="th-group-header">Route</span>
+              <div class="th-content">Destination &uarr;&darr;</div>
+            </th>
+            <th>
+              <span class="th-group-header">Rotation</span>
+              <div class="th-content">Aircraft / turn</div>
+            </th>
+            <th data-sort="exp_delay">
+              <span class="th-group-header">At 11:00 PM Cutoff</span>
+              <div class="th-content">Expected delay &uarr;&darr;</div>
+            </th>
+            <th data-sort="p_delay15">
+              <span class="th-group-header">At 11:00 PM Cutoff</span>
+              <div class="th-content">Delay risk &uarr;&darr;</div>
+            </th>
+            <th class="highlight-col">
+              <span class="th-group-header" style="color: #92400e; font-weight: 700;">11 PM Feature Drivers</span>
+              <div class="th-content" style="color: #92400e;">Main risk factor &uarr;&darr;</div>
+            </th>
+            <th data-sort="act_delay">
+              <span class="th-group-header">Next Day Outcome</span>
+              <div class="th-content">Recorded status &uarr;&darr;</div>
+            </th>
+            <th data-sort="act_dep">
+              <span class="th-group-header">Next Day Outcome</span>
+              <div class="th-content">Actual departure &uarr;&darr;</div>
+            </th>
+            <th>
+              <span class="th-group-header">Verification</span>
+              <div class="th-content">Forecast error</div>
+            </th>
+          </tr>
+        </thead>
+        <tbody id="departuresTableBody">
+          <!-- Rows dynamically rendered -->
+        </tbody>
+      </table>
+      <div id="tableEmptyState" class="empty-state" style="display: none;">
+        No departures match your filter criteria. Try adjusting your search or filters.
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <div>
+        <strong>RDU Flight Delay Forecaster</strong> &middot; Forecasts and recorded outcomes are kept separate. Publication status is shown above.
+      </div>
+      <div>
+        Model: <span class="mono"><span id="modelIdentity">Loading</span></span> &middot; Data: Bureau of Transportation Statistics (BTS) &amp; FlightAware AeroAPI.
+      </div>
+    </footer>
+
+  </main>
+
+  <!-- Slide-Over Inspection Drawer -->
+  <div id="drawerOverlay" class="drawer-overlay"></div>
+  <aside id="flightDrawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerFlightTitle" aria-hidden="true">
+    <div class="drawer-header">
+      <div>
+        <h2 id="drawerFlightTitle">WN 3854 (Southwest Airlines)</h2>
+        <p id="drawerFlightSubtitle">RDU &rarr; ATL &middot; Scheduled: 6:15 PM</p>
+      </div>
+      <button aria-label="Close flight details" id="btnCloseDrawer" class="close-drawer-btn">&times;</button>
+    </div>
+
+    <div class="drawer-body">
+      <!-- Section 1: Night-Before Forecast -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">Forecast estimate</div>
+        <div class="drawer-grid">
+          <div class="drawer-field">
+            <div class="drawer-field-label">Expected Delay</div>
+            <div id="drawerExpDelay" class="drawer-field-val mono">--</div>
+          </div>
+          <div class="drawer-field">
+            <div class="drawer-field-label">Chance of delay ≥15 min</div>
+            <div id="drawerProbDelay" class="drawer-field-val mono">--</div>
+          </div>
+          <div class="drawer-field">
+            <div class="drawer-field-label">80% Prediction Interval</div>
+            <div id="drawerInterval" class="drawer-field-val mono">--</div>
+          </div>
+          <div class="drawer-field">
+            <div class="drawer-field-label">Forecast Delay risk</div>
+            <div id="drawerRiskBadge" class="drawer-field-val">--</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 14px;">
+          <div class="drawer-field-label" style="margin-bottom: 6px;">Predicted outcome probabilities</div>
+          <div class="prob-bar-container">
+            <div class="prob-bar-row">
+              <span class="prob-bar-label">On-Time (0&ndash;14m)</span>
+              <div class="prob-bar-track"><div id="barOnTime" class="prob-bar-fill" style="width: 0%;"></div></div>
+              <span id="pctOnTime" class="prob-bar-pct mono">0%</span>
+            </div>
+            <div class="prob-bar-row">
+              <span class="prob-bar-label">Delayed 15&ndash;44m</span>
+              <div class="prob-bar-track"><div id="barD15" class="prob-bar-fill" style="width: 0%; background: #d97706;"></div></div>
+              <span id="pctD15" class="prob-bar-pct mono">0%</span>
+            </div>
+            <div class="prob-bar-row">
+              <span class="prob-bar-label">Delayed 45&ndash;89m</span>
+              <div class="prob-bar-track"><div id="barD45" class="prob-bar-fill" style="width: 0%; background: #ea580c;"></div></div>
+              <span id="pctD45" class="prob-bar-pct mono">0%</span>
+            </div>
+            <div class="prob-bar-row">
+              <span class="prob-bar-label">Severe 90m+</span>
+              <div class="prob-bar-track"><div id="barD90" class="prob-bar-fill" style="width: 0%; background: #dc2626;"></div></div>
+              <span id="pctD90" class="prob-bar-pct mono">0%</span>
+            </div>
+            <div class="prob-bar-row">
+              <span class="prob-bar-label">Cancelled</span>
+              <div class="prob-bar-track"><div id="barCanc" class="prob-bar-fill" style="width: 0%; background: #475569;"></div></div>
+              <span id="pctCanc" class="prob-bar-pct mono">0%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Main risk factor (Feature Breakdown) -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">Why the model expects this</div>
+        <div class="drawer-field" style="margin-bottom: 12px; border-left: 3px solid #991b1b; background: #fff5f5;">
+          <div class="drawer-field-label" style="color: #991b1b;">Point-in-Time Explanatory Factor</div>
+          <div id="drawerFactorText" style="font-size: 0.9rem; font-weight: 600; margin-top: 4px; color: #7f1d1d;">--</div>
+        </div>
+        <div class="drawer-grid">
+          <div class="drawer-field">
+            <div class="drawer-field-label">Gate Turn Slack</div>
+            <div id="drawerTurn" class="drawer-field-val mono">--</div>
+          </div>
+          <div class="drawer-field">
+            <div class="drawer-field-label">Inbound Previous Origin</div>
+            <div id="drawerPrevOrigin" class="drawer-field-val mono">--</div>
+          </div>
+          <div class="drawer-field">
+            <div class="drawer-field-label">Aircraft Rotation Leg</div>
+            <div id="drawerLeg" class="drawer-field-val mono">--</div>
+          </div>
+          <div class="drawer-field">
+            <div class="drawer-field-label">Aircraft Tail / Gate</div>
+            <div id="drawerTail" class="drawer-field-val mono">--</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Ground Truth Outcome -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">Recorded outcome</div>
+        <div class="drawer-grid">
+          <div class="drawer-field">
+            <div class="drawer-field-label">Actual departurearture</div>
+            <div id="drawerActDep" class="drawer-field-val mono">--</div>
+          </div>
+          <div class="drawer-field">
+            <div class="drawer-field-label">Actual Delay</div>
+            <div id="drawerActDelay" class="drawer-field-val mono">--</div>
+          </div>
+          <div class="drawer-field">
+            <div class="drawer-field-label">Inside prediction range</div>
+            <div id="drawerHitStatus" class="drawer-field-val">--</div>
+          </div>
+          <div class="drawer-field">
+            <div class="drawer-field-label">Delay Delta (Pred &minus; Act)</div>
+            <div id="drawerDeltaErr" class="drawer-field-val mono">--</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- Load data via JavaScript (supports file:// and HTTP without CORS blockers) -->
+  <script src="departures_data.js"></script>
+
+  <script>
+    (function() {
+      let data = null;
+      let currentWeekIndex = 0;
+      let currentDayIndex = 0;
+      let activeFilter = 'ALL';
+      let sortCol = 'sched_dep';
+      let sortAsc = true;
+
+      const weekSelect = document.getElementById('weekSelect');
+      const weekDesc = document.getElementById('weekDesc');
+      const daySelectorGroup = document.getElementById('daySelectorGroup');
+      const statActiveDate = document.getElementById('statActiveDate');
+
+      const kpiTotalFlights = document.getElementById('kpiTotalFlights');
+      const kpiTotalSub = document.getElementById('kpiTotalSub');
+      const kpiPredRate = document.getElementById('kpiPredRate');
+      const kpiActualRate = document.getElementById('kpiActualRate');
+      const kpiActualCountSub = document.getElementById('kpiActualCountSub');
+      const kpiAvgDelay = document.getElementById('kpiAvgDelay');
+      const kpiAvgPredSub = document.getElementById('kpiAvgPredSub');
+      const kpiCoverage = document.getElementById('kpiCoverage');
+
+      const searchInput = document.getElementById('searchInput');
+      const airlineFilter = document.getElementById('airlineFilter');
+      const timeFilter = document.getElementById('timeFilter');
+      const filterPills = document.querySelectorAll('.filter-btn');
+      const tableCountDisplay = document.getElementById('tableCountDisplay');
+
+      const tableBody = document.getElementById('departuresTableBody');
+      const tableEmptyState = document.getElementById('tableEmptyState');
+      const tableHeaders = document.querySelectorAll('th[data-sort]');
+
+      const btnExportCsv = document.getElementById('btnExportCsv');
+      const btnCopyLinkedIn = document.getElementById('btnCopyLinkedIn');
+      const btnBannerCopy = document.getElementById('btnBannerCopy');
+
+      const drawerOverlay = document.getElementById('drawerOverlay');
+      const flightDrawer = document.getElementById('flightDrawer');
+      const btnCloseDrawer = document.getElementById('btnCloseDrawer');
+
+      function startLoadingProgress(durationMs = 5000) {
+        const bar = document.getElementById('loadingProgressBar');
+        const status = document.getElementById('loadingStatusText');
+        if (!bar) return;
+
+        const startTime = performance.now();
+        function update() {
+          const elapsed = performance.now() - startTime;
+          const progress = Math.min(elapsed / durationMs, 1);
+          if (bar) bar.style.width = `${(progress * 100).toFixed(1)}%`;
+          if (status && elapsed > 2500 && elapsed < durationMs) {
+            status.textContent = 'Rendering flight table...';
+          }
+          if (progress < 1) {
+            requestAnimationFrame(update);
+          }
+        }
+        requestAnimationFrame(update);
+      }
+
+      function dismissLoading() {
+        const overlay = document.getElementById('pageLoadingOverlay');
+        if (overlay) {
+          overlay.classList.add('fade-out');
+          setTimeout(() => {
+            overlay.style.display = 'none';
+          }, 450);
+        }
+      }
+
+      async function init() {
+        startLoadingProgress(5000);
+        const minDelayPromise = new Promise(resolve => setTimeout(resolve, 5000));
+
+        let fetchPromise = (async () => {
+          try {
+            const response = await fetch('departures_data.json', {cache:'no-store'});
+            if (!response.ok) throw new Error('Flight data unavailable');
+            data = await response.json();
+          } catch (error) {
+            data = window.DEPARTURES_DATA;
+          }
+        })();
+
+        await Promise.all([minDelayPromise, fetchPromise]);
+
+        if (!data?.weeks?.some(w => w.days?.length)) {
+          document.querySelector('.app-container').textContent = 'No flight data is available. Run the publication job and reload this page.';
+          dismissLoading();
+          return;
+        }
+        data.weeks = data.weeks.filter(w => w.days?.length);
+        setupUI();
+        dismissLoading();
+      }
+
+      const numberText = (value, suffix = '') => value == null || !Number.isFinite(Number(value)) ? '--' : `${value}${suffix}`;
+      const percentText = value => value == null ? '--' : `${(value * 100).toFixed(1)}%`;
+      const escapeText = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      function defaultDay(week) {
+        if (!week.is_live) return 0;
+        const today = new Intl.DateTimeFormat('sv-SE', {timeZone:'America/New_York'}).format(new Date());
+        const future = week.days.findIndex(d => d.date > today);
+        const current = week.days.findIndex(d => d.date === today);
+        return future >= 0 ? future : current >= 0 ? current : week.days.length - 1;
+      }
+
+      function setupUI() {
+        weekSelect.innerHTML = '';
+        data.weeks.forEach((w, i) => {
+          const opt = document.createElement('option');
+          opt.value = i;
+          opt.textContent = w.is_live ? 'Current departures' : `${w.name.replace(/[^\p{L}\p{N}\s.,:()–—/-]/gu, '').trim()}`;
+          weekSelect.appendChild(opt);
+        });
+
+        currentWeekIndex = Math.max(0, data.weeks.findIndex(w => w.is_live));
+        weekSelect.value = currentWeekIndex;
+        currentDayIndex = defaultDay(data.weeks[currentWeekIndex]);
+
+        weekSelect.addEventListener('change', (e) => {
+          currentWeekIndex = parseInt(e.target.value, 10);
+          currentDayIndex = defaultDay(data.weeks[currentWeekIndex]);
+          renderWeekControls();
+          renderActiveDay();
+        });
+
+        searchInput.addEventListener('input', () => renderTable());
+        airlineFilter.addEventListener('change', () => renderTable());
+        timeFilter.addEventListener('change', () => renderTable());
+
+        filterPills.forEach(btn => {
+          btn.addEventListener('click', () => {
+            filterPills.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeFilter = btn.getAttribute('data-filter');
+            renderTable();
+          });
+        });
+
+        tableHeaders.forEach(th => {
+          th.addEventListener('click', () => {
+            const col = th.getAttribute('data-sort');
+            if (sortCol === col) {
+              sortAsc = !sortAsc;
+            } else {
+              sortCol = col;
+              sortAsc = true;
+            }
+            tableHeaders.forEach(item => item.setAttribute('aria-sort', item === th ? (sortAsc ? 'ascending' : 'descending') : 'none'));
+            renderTable();
+          });
+        });
+
+        btnExportCsv.addEventListener('click', exportCsv);
+        btnCopyLinkedIn.addEventListener('click', copyLinkedInText);
+        btnBannerCopy.addEventListener('click', copyLinkedInText);
+
+        btnCloseDrawer.addEventListener('click', closeDrawer);
+        drawerOverlay.addEventListener('click', closeDrawer);
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') closeDrawer();
+        });
+
+        document.querySelector('th[data-sort="sched_dep"]').setAttribute('aria-sort','ascending');
+        renderWeekControls();
+        renderActiveDay();
+      }
+
+      function renderWeekControls() {
+        const week = data.weeks[currentWeekIndex];
+        weekDesc.textContent = week.is_live ? 'Current schedule and night-before delay estimates.' : 'Historical departures with forecasts and recorded outcomes.';
+
+        daySelectorGroup.innerHTML = '';
+        week.days.forEach((d, i) => {
+          const btn = document.createElement('button');
+          const isLive = week.is_live;
+          btn.className = `day-pill-btn ${isLive ? 'live-pill' : ''} ${i === currentDayIndex ? 'active' : ''}`;
+          btn.setAttribute('aria-pressed', String(i === currentDayIndex));
+          btn.innerHTML = `
+            <span class="pill-weekday">${d.label.replace(/^[A-Za-z]+,?\s*/, '')}</span>
+            <span class="pill-date">${d.weekday.split(' ')[0]}</span>
+            <span class="pill-count mono">${d.stats.total_flights} flights</span>
+          `;
+          btn.addEventListener('click', () => {
+            currentDayIndex = i;
+            document.querySelectorAll('.day-pill-btn').forEach((b, idx) => {
+              b.classList.toggle('active', idx === currentDayIndex);
+              b.setAttribute('aria-pressed', String(idx === currentDayIndex));
+            });
+            renderActiveDay();
+          });
+          daySelectorGroup.appendChild(btn);
+        });
+      }
+
+      function renderActiveDay() {
+        const week = data.weeks[currentWeekIndex];
+        const day = week.days[currentDayIndex];
+        statActiveDate.textContent = new Intl.DateTimeFormat('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric', timeZone:'UTC'}).format(new Date(day.date+'T12:00:00Z'));
+        const stats = day.stats;
+        kpiTotalFlights.textContent = stats.total_flights;
+        kpiTotalSub.textContent = `${stats.pending_outcomes ?? 0} outcomes pending`;
+        kpiPredRate.textContent = numberText(stats.predicted_delay_pct, '%');
+        kpiActualRate.textContent = numberText(stats.observed_delay_pct, '%');
+        kpiActualCountSub.textContent = stats.known_outcomes ? `${stats.delayed_flights} delayed / ${stats.known_outcomes} known outcomes` : 'No confirmed outcomes yet';
+        kpiAvgDelay.textContent = numberText(stats.avg_actual_delay_min, 'm');
+        kpiAvgPredSub.textContent = `predicted: ${numberText(stats.avg_predicted_delay_min, 'm')}`;
+        kpiCoverage.textContent = numberText(stats.interval_coverage_pct, '%');
+        const meta = day.metadata || {};
+        const status = document.getElementById('dataStatus');
+        const stamp = meta.schedule_retrieved_at_utc || data.generated_at_utc;
+        const age = stamp ? (Date.now() - Date.parse(stamp)) / 3600000 : null;
+        const names = {published:'Published night-before forecast', provisional:'Provisional estimate', reconstructed:'Reconstructed estimate; excluded from scoring', unavailable:'No night-before forecast available', historical_backtest:'Historical walk-forward backtest'};
+        const parts = [names[meta.forecast_status] || 'Forecast status unavailable', `Model: ${meta.model_version || 'unavailable'}`];
+        if (week.is_live && stamp) parts.push(`Schedule saved ${new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(stamp))} ET`);
+        if (week.is_live && !meta.schedule_complete) parts.push('Partial schedule: some departures may be missing');
+        if (week.is_live && age > 24) parts.push('Schedule snapshot is over 24 hours old');
+        if (week.is_live && meta.training_end_date) parts.push(`Historical training data through ${meta.training_end_date}`);
+        if (week.is_live && day.date < new Intl.DateTimeFormat('sv-SE',{timeZone:'America/New_York'}).format(new Date()) && !stats.known_outcomes) parts.push('Actual departures have not been collected');
+        status.textContent = parts.join('. ') + '.';
+        document.getElementById('modelIdentity').textContent = meta.model_version || 'Unavailable';
+
+        const carriers = [...new Set(day.flights.map(f => f.carrier_name))].sort();
+        const selectedAirline = airlineFilter.value;
+        airlineFilter.innerHTML = '<option value="ALL">All Airlines</option>';
+        carriers.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          airlineFilter.appendChild(opt);
+        });
+        airlineFilter.value = carriers.includes(selectedAirline) ? selectedAirline : 'ALL';
+
+        renderTable();
+      }
+
+      function getFilteredFlights() {
+        const week = data.weeks[currentWeekIndex];
+        const day = week.days[currentDayIndex];
+        const query = searchInput.value.trim().toLowerCase();
+        const airlineVal = airlineFilter.value;
+        const timeVal = timeFilter.value;
+
+        return day.flights.filter(f => {
+          if (query) {
+            const match = f.flight_no.toLowerCase().includes(query) ||
+                          f.dest.toLowerCase().includes(query) ||
+                          f.dest_city.toLowerCase().includes(query) ||
+                          f.carrier_name.toLowerCase().includes(query) ||
+                          f.tail.toLowerCase().includes(query);
+            if (!match) return false;
+          }
+
+          if (airlineVal !== 'ALL' && f.carrier_name !== airlineVal) {
+            return false;
+          }
+
+          if (timeVal !== 'ALL') {
+            const h = parseInt(f.sched_dep.split(':')[0], 10);
+            if (timeVal === 'MORNING' && (h < 5 || h >= 10)) return false;
+            if (timeVal === 'MIDDAY' && (h < 10 || h >= 15)) return false;
+            if (timeVal === 'AFTERNOON' && (h < 15 || h >= 19)) return false;
+            if (timeVal === 'EVENING' && (h < 19 || h >= 24)) return false;
+          }
+
+          if (activeFilter === 'HIGH_RISK' && (f.p_delay15 == null || f.p_delay15 < 0.28)) return false;
+          if (activeFilter === 'DELAYED' && (f.act_delay == null || f.act_delay < 15 || f.cancelled)) return false;
+          if (activeFilter === 'ONTIME' && (f.act_delay == null || f.act_delay >= 15 || f.cancelled)) return false;
+          if (activeFilter === 'CANCELLED' && !f.cancelled) return false;
+
+          return true;
+        });
+      }
+
+      function sortFlights(flights) {
+        return flights.sort((a, b) => {
+          let va = a[sortCol];
+          if (va == null || va === '--:--') return b[sortCol] == null || b[sortCol] === '--:--' ? 0 : 1;
+          if (b[sortCol] == null || b[sortCol] === '--:--') return -1;
+          let vb = b[sortCol];
+
+          if (sortCol === 'sched_dep' || sortCol === 'act_dep') {
+            va = va || '99:99';
+            vb = vb || '99:99';
+          }
+
+          if (typeof va === 'string') {
+            const cmp = va.localeCompare(vb);
+            return sortAsc ? cmp : -cmp;
+          } else {
+            return sortAsc ? (va - vb) : (vb - va);
+          }
+        });
+      }
+
+      function renderTable() {
+        const flights = sortFlights(getFilteredFlights());
+        tableBody.innerHTML = '';
+
+        tableCountDisplay.textContent = `Showing ${flights.length} of ${data.weeks[currentWeekIndex].days[currentDayIndex].flights.length} departures`;
+
+        if (flights.length === 0) {
+          tableEmptyState.style.display = 'block';
+          return;
+        } else {
+          tableEmptyState.style.display = 'none';
+        }
+
+
+        flights.forEach(original => {
+          const f = {...original};
+          for (const key of ['flight_no','carrier','dest','dest_city','tail','gate','terminal','why_tag','why_summary','why_detail','factor','act_status','risk','prev_origin']) if (typeof f[key] === 'string') f[key] = escapeText(f[key]);
+          const tr = document.createElement('tr');
+
+          // Rotation info
+          let rotationText = f.leg == null ? 'Rotation unavailable' : `Leg ${f.leg} of ${f.n_legs ?? '?'}`;
+          if (f.turn_min) {
+            rotationText += ` &middot; ${f.turn_min}m turn`;
+          }
+          if (f.prev_origin && f.prev_origin !== '--' && f.prev_origin !== 'RDU') {
+            rotationText += ` (from ${f.prev_origin})`;
+          } else if (f.leg === 1) {
+            rotationText += ` (Overnight RDU)`;
+          }
+
+          // Why High Risk / Driver pill styling
+          let pillColor = 'green';
+          if (f.risk_badge === 'badge-high' || f.risk_badge === 'badge-cancel') {
+            pillColor = 'red';
+          } else if (f.risk_badge === 'badge-mod') {
+            pillColor = 'amber';
+          }
+
+          // Verification badge
+          let intervalBadge = '';
+          if (f.in80 == null) {
+            intervalBadge = `<span class="mono" style="font-size: 0.76rem; color: #475569; font-weight: 600;">Not scored</span>`;
+          } else {
+            intervalBadge = f.in80 
+              ? `<span class="delta-correct" title="Actual delay fell within the 80% confidence interval">&check; In Bounds</span>`
+              : `<span class="delta-out" title="Actual delay was outside the 80% confidence interval">&bull; Out Bounds</span>`;
+          }
+
+          const errDisplay = f.err_min == null ? '--' : (f.err_min > 0 ? `+${f.err_min}m` : `${f.err_min}m`);
+
+          // Live gate display
+          const gateText = (f.gate && f.gate !== '--') ? `Gate ${f.gate} &middot; T${f.terminal}` : f.tail;
+
+          tr.innerHTML = `
+            <td class="mono" style="font-weight: 600;">
+              ${f.sched_dep_ampm}
+              <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">${f.sched_dep} ET</span>
+            </td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="carrier-chip">${f.carrier}</span>
+                <div>
+                  <span class="flight-num">${f.flight_no}</span>
+                  <span style="font-size: 0.74rem; color: var(--text-muted); display: block;">${gateText}</span>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div>
+                <span class="dest-code">${f.dest}</span>
+                <span class="dest-city">${f.dest_city}</span>
+              </div>
+            </td>
+            <td style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.35;">
+              ${rotationText}
+            </td>
+            <td>
+              <span class="mono" style="font-weight: 700; font-size: 0.95rem;">${numberText(f.exp_delay, ' min')}</span>
+              <span class="interval-pill mono">${f.q10 == null ? 'Range unavailable' : `80% range: ${f.q10}–${f.q90}m`}</span>
+            </td>
+            <td>
+              <span class="badge ${f.risk_badge}">
+                ${percentText(f.p_delay15)} &middot; ${f.risk}
+              </span>
+            </td>
+            <!-- NEW PROMINENT 'WHY HIGH RISK PREDICTED' COLUMN -->
+            <td style="background: #fafaf9;">
+              <div class="why-risk-container">
+                <span class="risk-reason-pill ${pillColor}">
+                  ${f.why_tag || 'Historical baseline'}
+                </span>
+                <span class="risk-reason-detail" title="${f.why_detail || f.factor}">
+                  ${f.why_summary || f.why_detail || f.factor}
+                </span>
+              </div>
+            </td>
+            <td>
+              <span class="badge ${f.act_badge}">
+                ${f.act_status}
+              </span>
+            </td>
+            <td class="mono" style="font-size: 0.85rem;">
+              ${f.cancelled ? '<span style="color: #991b1b; font-weight: 600;">CANCELLED</span>' : f.act_dep_ampm}
+            </td>
+            <td>
+              <div>${intervalBadge}</div>
+              <span class="mono" style="font-size: 0.74rem; color: var(--text-muted);">Err: ${errDisplay}</span>
+            </td>
+          `;
+
+          tr.tabIndex = 0;
+          tr.setAttribute('aria-label', `${f.flight_no} to ${f.dest_city}. Open flight details`);
+          tr.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDrawer(original); } });
+          tr.addEventListener('click', () => openDrawer(original));
+          tableBody.appendChild(tr);
+        });
+      }
+
+      function openDrawer(f) {
+        document.getElementById('drawerFlightTitle').textContent = `${f.flight_no} (${f.carrier_name})`;
+        document.getElementById('drawerFlightSubtitle').textContent = `RDU → ${f.dest} (${f.dest_name}) · Scheduled: ${f.sched_dep_ampm}`;
+
+        document.getElementById('drawerExpDelay').textContent = `${numberText(f.exp_delay, ' min')}`;
+        document.getElementById('drawerProbDelay').textContent = percentText(f.p_delay15);
+        document.getElementById('drawerInterval').textContent = f.q10 == null ? 'Unavailable' : `${f.q10}–${f.q90} min (80% range)`;
+        document.getElementById('drawerRiskBadge').textContent = f.risk;
+
+        const pOnTime = f.p_on_time == null ? null : (f.p_on_time * 100).toFixed(1);
+        const pD15 = f.p_d15_44 == null ? null : (f.p_d15_44 * 100).toFixed(1);
+        const pD45 = f.p_d45_89 == null ? null : (f.p_d45_89 * 100).toFixed(1);
+        const pD90 = f.p_d90_plus == null ? null : (f.p_d90_plus * 100).toFixed(1);
+        const pCanc = f.p_cancelled == null ? null : (f.p_cancelled * 100).toFixed(1);
+
+        document.getElementById('barOnTime').style.width = pOnTime == null ? '0%' : `${pOnTime}%`;
+        document.getElementById('pctOnTime').textContent = pOnTime == null ? '--' : `${pOnTime}%`;
+        document.getElementById('barD15').style.width = pD15 == null ? '0%' : `${pD15}%`;
+        document.getElementById('pctD15').textContent = pD15 == null ? '--' : `${pD15}%`;
+        document.getElementById('barD45').style.width = pD45 == null ? '0%' : `${pD45}%`;
+        document.getElementById('pctD45').textContent = pD45 == null ? '--' : `${pD45}%`;
+        document.getElementById('barD90').style.width = pD90 == null ? '0%' : `${pD90}%`;
+        document.getElementById('pctD90').textContent = pD90 == null ? '--' : `${pD90}%`;
+        document.getElementById('barCanc').style.width = pCanc == null ? '0%' : `${pCanc}%`;
+        document.getElementById('pctCanc').textContent = pCanc == null ? '--' : `${pCanc}%`;
+
+        document.getElementById('drawerFactorText').textContent = f.why_detail || f.factor;
+        document.getElementById('drawerTail').textContent = (f.gate && f.gate !== '--') ? `${f.tail} (Gate ${f.gate})` : f.tail;
+        document.getElementById('drawerLeg').textContent = f.leg == null ? 'Unknown' : `Leg ${f.leg} of ${f.n_legs ?? '?'}`;
+        document.getElementById('drawerTurn').textContent = f.turn_min ? `${f.turn_min} min` : 'Unknown';
+        document.getElementById('drawerPrevOrigin').textContent = f.prev_origin || 'Unknown';
+
+        document.getElementById('drawerActDep').textContent = f.cancelled ? 'Cancelled' : `${f.act_dep_ampm}`;
+        document.getElementById('drawerActDelay').textContent = f.act_status;
+        document.getElementById('drawerHitStatus').textContent = f.in80 == null ? 'Not scored' : f.in80 ? 'Inside prediction range' : 'Outside prediction range';
+        document.getElementById('drawerDeltaErr').textContent = numberText(f.err_min, 'm');
+        document.getElementById('drawerFactorText').textContent = (f.why_detail || f.factor) + ` Forecast status: ${f.forecast_status}. Model: ${f.model_version || 'unavailable'}.`;
+
+        drawerOverlay.classList.add('active');
+        flightDrawer.classList.add('active');
+      }
+
+      function closeDrawer() {
+        drawerOverlay.classList.remove('active');
+        flightDrawer.classList.remove('active');
+      }
+
+      function copyLinkedInText() {
+        const text = new URL('departures.html', window.location.href).href;
+
+        navigator.clipboard.writeText(text).then(() => {
+          const btn = btnCopyLinkedIn;
+          const orig = btn.innerHTML;
+          btn.innerHTML = ` Copied to Clipboard!`;
+          btnBannerCopy.innerHTML = ` Copied to Clipboard!`;
+          setTimeout(() => {
+            btn.innerHTML = orig;
+            btnBannerCopy.innerHTML = ` Copy LinkedIn Post`;
+          }, 3000);
+        }).catch(() => {
+          window.prompt("Copy this page link:", text);
+        });
+      }
+
+      function exportCsv() {
+        const flights = sortFlights(getFilteredFlights());
+        if (flights.length === 0) return;
+
+        const fields = ['flight_no','carrier_name','gate','tail','dest','dest_city','sched_dep','exp_delay','p_delay15','q10','q90','risk','why_tag','why_summary','why_detail','act_dep','act_delay','act_status','in80','forecast_date','model_version','forecast_status','inputs_cutoff_utc','published_at_utc'];
+        const cell = value => {
+          if (value == null) return '';
+          let text = String(value);
+          if (typeof value === 'string' && /^[=+@\-]/.test(text) && text !== '--' && text !== '--:--') text = "'" + text;
+          return '"' + text.replace(/"/g, '""') + '"';
+        };
+        const csvRows = [fields.join(','), ...flights.map(f => fields.map(k => cell(f[k])).join(','))];
+
+        const blob = new Blob([csvRows.join("\n")], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `rdu_departures_predictions.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      document.addEventListener('DOMContentLoaded', init);
+    })();
+  </script>
+</body>
+</html>

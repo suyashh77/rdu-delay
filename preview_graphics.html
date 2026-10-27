@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RDU Delay Project - Graphics Preview</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 30px;
+      margin: 0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    p.subtitle {
+      color: #94a3b8;
+      margin-top: 0;
+      margin-bottom: 30px;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 40px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .card h2 {
+      margin-top: 0;
+      font-size: 20px;
+      color: #38bdf8;
+    }
+    .card p {
+      color: #cbd5e1;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    img {
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      background: #ffffff;
+      display: block;
+      margin-top: 16px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      background: #0369a1;
+      color: #e0f2fe;
+      margin-right: 8px;
+    }
+  </style>
+  <link rel="stylesheet" href="site.css">
+  <script src="site.js" defer></script>
+</head>
+<body class="figures-page"><a class="skip-link" href="#main-content">Skip to content</a>
+<nav class="site-nav" aria-label="Main navigation"><a class="site-brand" href="departures.html"><span class="brand-code">RDU</span> Flight forecasts</a><div class="site-links"><a href="departures.html">Departures</a><a href="benchmark_lab.html">Research</a><a href="preview_graphics.html" aria-current="page">Figures</a></div></nav>
+  <main id="main-content" class="container">
+    <h1>Research figures</h1>
+    <p class="subtitle">Aircraft delay propagation and model evaluation results.</p>
+
+    <p class="data-status">Research benchmark figures. The EXP-003 results reflect walk-forward re-evaluation with the corrected, leak-free position-feature pipeline (position-last-row-v2). These figures evaluate the development period and do not measure live forecast accuracy.</p>
+    <div class="card">
+      <span class="badge">Aircraft rotation</span>
+      <h2>How Flight Delays Cascade Across an Aircraft Rotation</h2>
+      <p>Demonstrates physical delay propagation using real USDOT BTS records for United Airlines N17245 (Boeing 737) on Jan 1, 2023. Highlights buffer absorption, afternoon hub hold exhaustion, and the strict 11:00 PM cutoff.</p>
+      <img loading="lazy" src="docs/rdu_delay_cascade_rotation.png" alt="Aircraft Delay Cascade">
+    </div>
+
+    <div class="card">
+      <span class="badge">Model evaluation</span>
+      <h2>Walk-Forward Benchmark & Empirical Calibration</h2>
+      <p>Features the 14.65% CRPS error reduction and 10.70% Brier score improvement across 37,087 walk-forward flights against the B4v2 Markov baseline, alongside the 10-decile empirical calibration curve (ECE = 0.00800, 80% coverage = 80.18%).</p>
+      <img loading="lazy" src="docs/rdu_delay_benchmark_results.png" alt="Benchmark Results">
+    </div>
+  </main>
+</body>
+</html>
