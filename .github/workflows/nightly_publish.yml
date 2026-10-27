@@ -31,6 +31,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .
 
+      - name: Fetch existing web data
+        run: |
+          mkdir -p web
+          curl -sSL "https://raw.githubusercontent.com/${{ github.repository }}/gh-pages/departures_data.json" -o web/departures_data.json || true
+          curl -sSL "https://raw.githubusercontent.com/${{ github.repository }}/gh-pages/departures_data.js" -o web/departures_data.js || true
+
       - name: Run Live Collection & Publication Pipeline
         env:
           AEROAPI_KEY: ${{ secrets.AEROAPI_KEY }}
@@ -43,4 +49,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./web
           publish_branch: gh-pages
+          keep_files: true
           commit_message: "Auto-publish: nightly RDU forecasts and outcome updates [skip ci]"

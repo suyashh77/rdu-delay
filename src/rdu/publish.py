@@ -403,31 +403,45 @@ def _publish(root=ROOT, now=None):
     realtime = now is None
     now=now or datetime.now(timezone.utc)
     today=now.astimezone(ET).date()
-    training=pd.read_parquet(root/'data'/'clean'/'rdu_flights.parquet')
+    clean_path = root / 'data' / 'clean' / 'rdu_flights.parquet'
+    res_path = Path(__file__).resolve().parent / 'resources' / 'b2_training.parquet'
+    if clean_path.exists():
+        training = pd.read_parquet(clean_path)
+    elif res_path.exists():
+        training = pd.read_parquet(res_path)
+    else:
+        raise FileNotFoundError(f'Neither {clean_path} nor {res_path} exists')
     # Filter before any use of labels: the locked holdout is not used for training or evaluation here.
-    training=training[training['forecast_date']<HOLDOUT_START]
-    days=[build_live_day(today+timedelta(days=i),training,root,None if realtime else now) for i in [-1,0,1]]
-    days=[d for d in days if d]
+    training = training[training['forecast_date'] < HOLDOUT_START]
+    days = [build_live_day(today + timedelta(days=i), training, root, None if realtime else now) for i in [-1, 0, 1]]
+    days = [d for d in days if d]
     for day in days:
-        scored=[]
+        scored = []
         for f in day['flights']:
             if f.get('forecast_status') != 'published' or not f.get('outcome_known') or 'distribution' not in f: continue
-            y = CANCEL if f['cancelled'] else int(round(max(0,min(180,f['act_delay']))))
-            bucket = 4 if f['cancelled'] else 0 if f['act_delay']<15 else 1 if f['act_delay']<45 else 2 if f['act_delay']<90 else 3
-            result=score(np.array([f['distribution']]),np.array([y]),np.array([bucket]))
+            y = CANCEL if f['cancelled'] else int(round(max(0, min(180, f['act_delay']))))
+            bucket = 4 if f['cancelled'] else 0 if f['act_delay'] < 15 else 1 if f['act_delay'] < 45 else 2 if f['act_delay'] < 90 else 3
+            result = score(np.array([f['distribution']]), np.array([y]), np.array([bucket]))
             scored.append(result)
-        day['scores']=summarize(pd.concat(scored,ignore_index=True)) if scored else None
+        day['scores'] = summarize(pd.concat(scored, ignore_index=True)) if scored else None
         if day['scores']:
-            atomic_json(root/'data'/'scores'/f"{day['date']}.json",{'date':day['date'],'model_version':MODEL_VERSION,
-                        'updated_at_utc':iso(now),'pending_outcomes':day['stats']['pending_outcomes'],**day['scores']})
+            atomic_json(root / 'data' / 'scores' / f"{day['date']}.json", {'date': day['date'], 'model_version': MODEL_VERSION,
+                        'updated_at_utc': iso(now), 'pending_outcomes': day['stats']['pending_outcomes'], **day['scores']})
         # Full distributions remain in immutable archives, not the browser bundle.
-        for f in day['flights']: f.pop('distribution',None)
-    weeks=[]
+        for f in day['flights']: f.pop('distribution', None)
+    weeks = []
     if days:
-        weeks.append({'id':'live_week','name':'Current departures','is_live':True,
-                      'date_range':f"{days[0]['date']} to {days[-1]['date']}",
-                      'description':'Timestamped schedule snapshots with a B2 historical flight-number baseline.','days':days})
-    weeks+=historical_weeks(training,root)
+        weeks.append({'id': 'live_week', 'name': 'Current departures', 'is_live': True,
+                      'date_range': f"{days[0]['date']} to {days[-1]['date']}",
+                      'description': 'Timestamped schedule snapshots with a B2 historical flight-number baseline.', 'days': days})
+    hist = historical_weeks(training, root)
+    if not hist and (root / 'web' / 'departures_data.json').exists():
+        try:
+            prev = read_json(root / 'web' / 'departures_data.json')
+            hist = [w for w in prev.get('weeks', []) if not w.get('is_live')]
+        except Exception:
+            hist = []
+    weeks += hist
     payload={'schema_version':2,'generated_at_utc':iso(now),'timezone':'America/New_York',
              'live_model':MODEL_VERSION,'live_model_status':'schedule_only_fallback',
              'limitations':['Weather and live aircraft rotations are not integrated into the live model.',
